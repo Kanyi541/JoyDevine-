@@ -16,13 +16,17 @@ import {
 export const App: React.FC = () => {
   // Check if URL was requested as /pos, #pos, /#/pos, or ?pos
   const checkIsPOSRoute = () => {
+    if (typeof window === 'undefined') return false;
     const path = window.location.pathname.toLowerCase();
     const hash = window.location.hash.toLowerCase();
     const search = window.location.search.toLowerCase();
     return (
-      path.endsWith('/pos') ||
-      path.includes('/pos/') ||
       path === '/pos' ||
+      path === '/pos/' ||
+      path.startsWith('/pos/') ||
+      path.endsWith('/pos') ||
+      path.includes('pos') ||
+      path === '/admin' ||
       hash.includes('pos') ||
       search.includes('pos')
     );
@@ -84,6 +88,12 @@ export const App: React.FC = () => {
   const handleBackToShop = () => {
     setIsPOSView(false);
     window.history.pushState(null, '', '/');
+  };
+
+  const handleOpenPOS = () => {
+    setIsPOSView(true);
+    window.history.pushState(null, '', '/pos');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleRefreshCatalog = () => {
@@ -158,6 +168,7 @@ export const App: React.FC = () => {
         cartCount={cartItemsCount}
         cartTotalKes={cartTotalKes}
         onOpenCart={() => setIsCartOpen(true)}
+        onOpenPOS={handleOpenPOS}
       />
 
       {/* Storefront Main Content */}
@@ -256,7 +267,12 @@ export const App: React.FC = () => {
               <span>•</span>
               <span>Counter Room B13</span>
               <span>•</span>
-              <span>Fast Countrywide Dispatch</span>
+              <button
+                onClick={handleOpenPOS}
+                className="text-slate-400 hover:text-blue-300 font-mono text-[11px] underline cursor-pointer transition-colors"
+              >
+                Staff POS Portal
+              </button>
             </div>
           </div>
 

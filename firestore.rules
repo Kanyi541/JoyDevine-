@@ -15,5 +15,10 @@ service cloud.firestore {
     match /imageMemory/{memoryId} {
       allow read, write: if true;
     }
+
+    // POS Users: Staff and admin accounts
+    match /posUsers/{userId} {
+      allow read, write: if true;
+    }
   }
 }

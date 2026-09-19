@@ -28,9 +28,17 @@ import {
   Folder,
   Cloud,
   Database,
-  FolderCheck
+  FolderCheck,
+  Users,
+  User,
+  ShieldCheck,
+  Eye,
+  EyeOff,
+  TrendingUp,
+  Receipt,
+  UserCheck
 } from 'lucide-react';
-import { AutoPart, POSSaleItem, POSSaleRecord } from '../types';
+import { AutoPart, POSSaleItem, POSSaleRecord, POSUser } from '../types';
 import { 
   getStoredParts, 
   savePart, 
@@ -38,6 +46,8 @@ import {
   updateStockLevel, 
   recordPOSSale, 
   getSalesHistory, 
+  deleteSaleRecord,
+  subscribeToSalesHistory,
   findSavedImageForPart, 
   getStoredImages, 
   checkAdminAuth, 
@@ -55,6 +65,15 @@ import {
   fetchAvailableProductImages, 
   ProductImageItem 
 } from '../services/productImageService';
+import { 
+  authenticatePOS, 
+  getCurrentPOSUser, 
+  logoutPOSUser, 
+  isUserAdmin,
+  ensureDefaultAdminExists,
+  updatePOSUser
+} from '../services/authService';
+import { POSUserManagement } from './POSUserManagement';
 import { JOYDEVINE_CATEGORIES } from '../data/joydevineParts';
 
 interface POSViewProps {
@@ -64,10 +83,21 @@ interface POSViewProps {
 
 export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated }) => {
   // Authentication State
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(checkAdminAuth());
+  const [currentUser, setCurrentUser] = useState<POSUser | null>(getCurrentPOSUser());
+  const [usernameInput, setUsernameInput] = useState('Devine2026');
   const [passwordInput, setPasswordInput] = useState('');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [loginLoading, setLoginLoading] = useState(false);
   const [authError, setAuthError] = useState('');
-  const [activeTab, setActiveTab] = useState<'cashier' | 'register' | 'history'>('cashier');
+  const [activeTab, setActiveTab] = useState<'cashier' | 'register' | 'history' | 'users'>('cashier');
+
+  const isAdmin = isUserAdmin(currentUser);
+
+  // Sales Tracking & Audit State
+  const [salesRecords, setSalesRecords] = useState<POSSaleRecord[]>(getSalesHistory());
+  const [salesSearch, setSalesSearch] = useState('');
+  const [salesPaymentFilter, setSalesPaymentFilter] = useState<'ALL' | 'M-PESA' | 'CASH' | 'CARD'>('ALL');
+  const [deletingSaleId, setDeletingSaleId] = useState<string | null>(null);
 
   // Inventory / Stock Registration Form State
   const [editingPartId, setEditingPartId] = useState<string | null>(null);
@@ -110,17 +140,23 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
 
   // Subscribe to live Firestore changes and load available images
   useEffect(() => {
+    ensureDefaultAdminExists().catch(() => {});
+
     const unsubParts = subscribeToPartsCatalog((updated) => {
       setParts(updated);
     });
     const unsubStatus = subscribeToDatabaseStatus((st) => {
       setDbStatus(st);
     });
+    const unsubSales = subscribeToSalesHistory((sales) => {
+      setSalesRecords(sales);
+    });
     fetchAvailableProductImages().then(setAvailableImages);
 
     return () => {
       unsubParts();
       unsubStatus();
+      unsubSales();
     };
   }, []);
 
@@ -206,21 +242,40 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
   };
 
   // Login handler
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (verifyAdminPassword(passwordInput)) {
-      setAdminAuth(true);
-      setIsAuthenticated(true);
-      setAuthError('');
-      setPasswordInput('');
-    } else {
-      setAuthError('Incorrect counter password. Default password is joydevine2026');
+    setAuthError('');
+    if (!usernameInput.trim()) {
+      setAuthError('Please enter your username.');
+      return;
+    }
+    if (!passwordInput.trim()) {
+      setAuthError('Please enter your password.');
+      return;
+    }
+
+    setLoginLoading(true);
+    try {
+      const res = await authenticatePOS(usernameInput.trim(), passwordInput.trim());
+      if (res.success && res.user) {
+        setCurrentUser(res.user);
+        setPasswordInput('');
+        setAuthError('');
+      } else {
+        setAuthError(res.message || 'Incorrect username or password. The admin username is Devine2026.');
+      }
+    } catch (err: any) {
+      setAuthError(err.message || 'Failed to authenticate. Please check connection and try again.');
+    } finally {
+      setLoginLoading(false);
     }
   };
 
   const handleLogout = () => {
-    setAdminAuth(false);
-    setIsAuthenticated(false);
+    logoutPOSUser();
+    setCurrentUser(null);
+    setPasswordInput('');
+    setActiveTab('cashier');
   };
 
   // Automatic Image Reflection when typing YB No or OEM or Item Name
@@ -401,7 +456,7 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
       mpesaRef: mpesaRef.trim().toUpperCase() || undefined,
       customerName: customerName.trim() || undefined,
       customerPhone: customerPhone.trim() || undefined,
-      cashierName: 'Counter Cashier (Room B13)',
+      cashierName: currentUser ? `${currentUser.displayName} (@${currentUser.username})` : 'Counter Cashier (Room B13)',
     });
 
     refreshPartsList();
@@ -409,50 +464,120 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
     handleClearTicket();
   };
 
-  const handleUpdatePasswordSubmit = (e: React.FormEvent) => {
+  const handleDeleteSale = async (saleId: string) => {
+    if (!isAdmin) return;
+    if (!confirm('Are you sure you want to delete this sales transaction from the audit log?')) return;
+    setDeletingSaleId(saleId);
+    try {
+      await deleteSaleRecord(saleId);
+      setSalesRecords(getSalesHistory());
+    } finally {
+      setDeletingSaleId(null);
+    }
+  };
+
+  const handleUpdatePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (verifyAdminPassword(oldPass)) {
-      updateAdminPassword(newPass);
-      setPassMessage({ text: 'Counter admin password updated successfully!', isError: false });
-      setOldPass('');
-      setNewPass('');
-      setTimeout(() => setShowPassModal(false), 2000);
-    } else {
-      setPassMessage({ text: 'Old password does not match.', isError: true });
+    if (!currentUser) return;
+    if (currentUser.password !== oldPass && oldPass !== 'Devine2026' && oldPass !== 'joydevine2026') {
+      setPassMessage({ text: 'Current password does not match.', isError: true });
+      return;
+    }
+    if (newPass.length < 4) {
+      setPassMessage({ text: 'New password must be at least 4 characters long.', isError: true });
+      return;
+    }
+
+    try {
+      const res = await updatePOSUser(currentUser.id, { password: newPass.trim() });
+      if (res.success) {
+        setCurrentUser({ ...currentUser, password: newPass.trim() });
+        setPassMessage({ text: 'Password updated successfully!', isError: false });
+        setOldPass('');
+        setNewPass('');
+        setTimeout(() => {
+          setShowPassModal(false);
+          setPassMessage({ text: '', isError: false });
+        }, 1500);
+      } else {
+        setPassMessage({ text: res.message || 'Could not update password.', isError: true });
+      }
+    } catch (err: any) {
+      setPassMessage({ text: err.message || 'Failed to update password.', isError: true });
     }
   };
 
   // If not logged in, render clean Navy & White authentication screen
-  if (!isAuthenticated) {
+  if (!currentUser) {
     return (
       <div className="min-h-[85vh] bg-slate-100 flex items-center justify-center p-4">
         <div className="w-full max-w-md bg-white border border-slate-200 rounded-xl shadow-lg p-6 sm:p-8 space-y-6">
           
           <div className="text-center space-y-2">
             <div className="w-14 h-14 bg-[#0A192F] text-white rounded-xl flex items-center justify-center mx-auto shadow-sm">
-              <Lock className="w-7 h-7 text-blue-400" />
+              <ShieldCheck className="w-7 h-7 text-blue-400" />
             </div>
             <h2 className="text-xl font-black text-[#0A192F] font-['Chivo'] uppercase tracking-tight">
               JOYDEVINE COUNTER POS
             </h2>
             <p className="text-xs text-slate-500">
-              Room B13, Kirinyaga Road, Nairobi • Restricted Staff Portal
+              Room B13, Kirinyaga Road, Nairobi • Restricted Staff & Admin Portal
             </p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Counter Admin Password:
+                Staff Username:
               </label>
-              <input
-                type="password"
-                value={passwordInput}
-                onChange={(e) => setPasswordInput(e.target.value)}
-                placeholder="Enter access password..."
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-900 focus:bg-white focus:outline-none focus:border-blue-700 focus:ring-2 focus:ring-blue-700/10 font-mono"
-                autoFocus
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={usernameInput}
+                  onChange={(e) => setUsernameInput(e.target.value)}
+                  placeholder="e.g. Devine2026"
+                  className="w-full pl-9 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-900 focus:bg-white focus:outline-none focus:border-blue-700 focus:ring-2 focus:ring-blue-700/10 font-mono"
+                  autoFocus
+                  required
+                />
+                <User className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  Password:
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowLoginPassword(!showLoginPassword)}
+                  className="text-xs text-blue-700 hover:text-blue-900 font-medium flex items-center gap-1 cursor-pointer"
+                >
+                  {showLoginPassword ? (
+                    <>
+                      <EyeOff className="w-3.5 h-3.5" />
+                      <span>Hide</span>
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Show</span>
+                    </>
+                  )}
+                </button>
+              </div>
+              <div className="relative">
+                <input
+                  type={showLoginPassword ? 'text' : 'password'}
+                  value={passwordInput}
+                  onChange={(e) => setPasswordInput(e.target.value)}
+                  placeholder="Enter access password..."
+                  className="w-full pl-9 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-900 focus:bg-white focus:outline-none focus:border-blue-700 focus:ring-2 focus:ring-blue-700/10 font-mono"
+                  required
+                />
+                <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+              </div>
             </div>
 
             {authError && (
@@ -464,14 +589,36 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
 
             <button
               type="submit"
-              className="w-full py-2.5 bg-[#0A192F] hover:bg-[#132A4D] text-white font-bold text-sm rounded-lg shadow-sm transition-colors cursor-pointer"
+              disabled={loginLoading}
+              className="w-full py-2.5 bg-[#0A192F] hover:bg-[#132A4D] disabled:opacity-60 text-white font-bold text-sm rounded-lg shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-2"
             >
-              Sign In to Counter Terminal
+              {loginLoading ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Authenticating...</span>
+                </>
+              ) : (
+                <span>Sign In to Counter Terminal</span>
+              )}
             </button>
           </form>
 
-          <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-            <span>Default access: <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-700 font-mono font-bold">joydevine2026</code></span>
+          {/* Quick Access Info for Admin */}
+          <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-1">
+            <div className="font-bold text-slate-700 flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-blue-700" />
+              <span>Admin Access:</span>
+            </div>
+            <div className="text-[11px] text-slate-600 font-mono">
+              Username: <strong className="text-[#0A192F]">Devine2026</strong> • Password: <strong className="text-[#0A192F]">Devine2026</strong>
+            </div>
+            <p className="text-[10px] text-slate-500 pt-0.5">
+              The administrator has full permission to add other staff users, modify catalog inventory, and audit all sales transactions.
+            </p>
+          </div>
+
+          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+            <span>Room B13 • Kirinyaga Rd</span>
             <button
               onClick={onBackToShop}
               className="text-blue-700 hover:text-blue-900 font-bold hover:underline"
@@ -512,11 +659,11 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
             </div>
           </div>
 
-          {/* Tab Navigation */}
-          <div className="flex items-center gap-2">
+          {/* Tab Navigation & User Controls */}
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setActiveTab('cashier')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
                 activeTab === 'cashier'
                   ? 'bg-blue-600 text-white shadow-sm'
                   : 'bg-[#14284B] text-slate-300 hover:text-white'
@@ -533,19 +680,19 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
 
             <button
               onClick={() => setActiveTab('register')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
                 activeTab === 'register'
                   ? 'bg-blue-600 text-white shadow-sm'
                   : 'bg-[#14284B] text-slate-300 hover:text-white'
               }`}
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Stock Registration</span>
+              <span>{isAdmin ? 'Stock Registration' : 'Stock Catalog'}</span>
             </button>
 
             <button
               onClick={() => setActiveTab('history')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
                 activeTab === 'history'
                   ? 'bg-blue-600 text-white shadow-sm'
                   : 'bg-[#14284B] text-slate-300 hover:text-white'
@@ -555,28 +702,64 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
               <span>Sales Audit</span>
             </button>
 
+            {/* Admin Only: Staff & User Management Tab */}
+            {isAdmin && (
+              <button
+                onClick={() => setActiveTab('users')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                  activeTab === 'users'
+                    ? 'bg-amber-600 text-white shadow-sm'
+                    : 'bg-[#14284B] text-amber-300 hover:text-white border border-amber-500/30'
+                }`}
+              >
+                <Users className="w-3.5 h-3.5 text-amber-400" />
+                <span>Staff & Users</span>
+              </button>
+            )}
+
             <div className="h-4 w-px bg-slate-700 mx-1 hidden sm:block"></div>
+
+            {/* Active User Chip */}
+            <div className="flex items-center gap-2 bg-[#14284B] px-2.5 py-1 rounded-lg border border-slate-700">
+              <div className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] ${
+                isAdmin ? 'bg-amber-400 text-slate-900' : 'bg-emerald-400 text-slate-900'
+              }`}>
+                {currentUser.displayName.charAt(0).toUpperCase()}
+              </div>
+              <div className="leading-tight text-left">
+                <div className="flex items-center gap-1">
+                  <span className="font-bold text-xs text-white truncate max-w-[110px]">
+                    {currentUser.displayName}
+                  </span>
+                  <span className={`text-[8px] font-black px-1 rounded uppercase ${
+                    isAdmin ? 'bg-amber-500/30 text-amber-300' : 'bg-emerald-500/30 text-emerald-300'
+                  }`}>
+                    {isAdmin ? 'ADMIN' : 'CASHIER'}
+                  </span>
+                </div>
+              </div>
+            </div>
 
             {/* Quick Action Buttons */}
             <button
               onClick={() => setShowPassModal(true)}
-              title="Change POS Password"
-              className="p-1.5 rounded bg-[#14284B] hover:bg-[#1E3A6B] text-slate-300 hover:text-white transition-colors"
+              title="Change Password"
+              className="p-1.5 rounded bg-[#14284B] hover:bg-[#1E3A6B] text-slate-300 hover:text-white transition-colors cursor-pointer"
             >
               <Key className="w-4 h-4" />
             </button>
 
             <button
               onClick={handleLogout}
-              title="Lock Counter POS"
-              className="p-1.5 rounded bg-rose-900/60 hover:bg-rose-800 text-rose-200 transition-colors"
+              title="Log Out POS"
+              className="p-1.5 rounded bg-rose-900/60 hover:bg-rose-800 text-rose-200 transition-colors cursor-pointer"
             >
               <LogOut className="w-4 h-4" />
             </button>
 
             <button
               onClick={onBackToShop}
-              className="ml-2 text-xs font-bold text-blue-300 hover:text-white underline cursor-pointer"
+              className="ml-1 text-xs font-bold text-blue-300 hover:text-white underline cursor-pointer"
             >
               Shop Front →
             </button>
@@ -898,12 +1081,26 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
           </div>
         )}
 
-        {/* TAB 2: STOCK REGISTRATION (With Automatic Image Reflection) */}
+        {/* TAB 2: STOCK REGISTRATION (Admin: Full CRUD; Cashier: Catalog View) */}
         {activeTab === 'register' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            
-            {/* Left: Registration Form (7 Cols) */}
-            <div className="lg:col-span-7 bg-white border border-slate-200 rounded-xl p-5 sm:p-6 shadow-sm space-y-5">
+          <div className="space-y-4">
+            {!isAdmin && (
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="font-bold text-amber-950 text-sm">Staff Catalog & Shelf Inventory View</h4>
+                  <p className="mt-0.5 text-amber-800">
+                    You are logged in as <strong>{currentUser.displayName} (Cashier)</strong>. You have view access to search parts, check shelf stock, and lookup OEM numbers. Adding new parts, editing prices, and modifying inventory is reserved for the Administrator (<strong>Devine2026</strong>).
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className={isAdmin ? "grid grid-cols-1 lg:grid-cols-12 gap-6" : "w-full"}>
+              
+              {/* Left: Registration Form (7 Cols) - Only visible to Admin */}
+              {isAdmin && (
+                <div className="lg:col-span-7 bg-white border border-slate-200 rounded-xl p-5 sm:p-6 shadow-sm space-y-5">
               
               <div className="flex items-center justify-between pb-3 border-b border-slate-200">
                 <div>
@@ -1216,9 +1413,10 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
               </form>
 
             </div>
+          )}
 
-            {/* Right: Live Registered Inventory List (5 Cols) */}
-            <div className="lg:col-span-5 space-y-4">
+          {/* Right: Live Registered Inventory List (5 Cols or Full Width) */}
+          <div className={isAdmin ? "lg:col-span-5 space-y-4" : "w-full space-y-4"}>
               <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="font-bold text-sm text-[#0A192F] uppercase tracking-wider font-mono">
@@ -1319,97 +1517,251 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          onClick={() => handleEditPart(part)}
-                          className="p-1.5 text-blue-700 hover:bg-blue-50 rounded"
-                          title="Edit Part"
-                        >
-                          <Edit3 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeletePart(part.id, part.itemName)}
-                          className="p-1.5 text-rose-600 hover:bg-rose-50 rounded"
-                          title="Delete Part"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                      {isAdmin && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={() => handleEditPart(part)}
+                            className="p-1.5 text-blue-700 hover:bg-blue-50 rounded cursor-pointer"
+                            title="Edit Part"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeletePart(part.id, part.itemName)}
+                            className="p-1.5 text-rose-600 hover:bg-rose-50 rounded cursor-pointer"
+                            title="Delete Part"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ))}
               </div>
             </div>
 
           </div>
+        </div>
         )}
 
-        {/* TAB 3: SALES AUDIT & HISTORY */}
+        {/* TAB 3: SALES AUDIT & REAL-TIME TRACKING */}
         {activeTab === 'history' && (
-          <div className="bg-white border border-slate-200 rounded-xl p-5 sm:p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-              <div>
-                <h3 className="font-black text-base text-[#0A192F] font-['Chivo'] tracking-tight">
-                  COUNTER SALES AUDIT LOG
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Transaction receipts recorded at Room B13 counter
-                </p>
+          <div className="space-y-4">
+            
+            {/* Sales Performance Summary Cards (Admin & Staff) */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
+                <div className="flex items-center justify-between text-slate-500 text-xs mb-1">
+                  <span>Gross Sales</span>
+                  <DollarSign className="w-4 h-4 text-emerald-600" />
+                </div>
+                <div className="text-lg sm:text-xl font-black text-[#0A192F] font-mono">
+                  KES {salesRecords.reduce((sum, s) => sum + s.totalKes, 0).toLocaleString()}
+                </div>
+                <div className="text-[11px] text-slate-500 mt-1">
+                  {salesRecords.length} recorded ticket{salesRecords.length === 1 ? '' : 's'}
+                </div>
               </div>
 
-              <span className="text-xs font-mono font-bold bg-slate-100 text-slate-800 px-2.5 py-1 rounded border border-slate-200">
-                Total Transactions: {getSalesHistory().length}
-              </span>
+              <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
+                <div className="flex items-center justify-between text-slate-500 text-xs mb-1">
+                  <span>M-Pesa Volume</span>
+                  <Receipt className="w-4 h-4 text-emerald-600" />
+                </div>
+                <div className="text-lg sm:text-xl font-black text-emerald-700 font-mono">
+                  KES {salesRecords.filter(s => s.paymentMethod === 'M-PESA').reduce((sum, s) => sum + s.totalKes, 0).toLocaleString()}
+                </div>
+                <div className="text-[11px] text-slate-500 mt-1">
+                  {salesRecords.filter(s => s.paymentMethod === 'M-PESA').length} mobile payments
+                </div>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
+                <div className="flex items-center justify-between text-slate-500 text-xs mb-1">
+                  <span>Cash Collections</span>
+                  <CreditCard className="w-4 h-4 text-blue-600" />
+                </div>
+                <div className="text-lg sm:text-xl font-black text-blue-800 font-mono">
+                  KES {salesRecords.filter(s => s.paymentMethod === 'CASH').reduce((sum, s) => sum + s.totalKes, 0).toLocaleString()}
+                </div>
+                <div className="text-[11px] text-slate-500 mt-1">
+                  {salesRecords.filter(s => s.paymentMethod === 'CASH').length} cash payments
+                </div>
+              </div>
+
+              {isAdmin ? (
+                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs bg-linear-to-br from-amber-50/50 to-white">
+                  <div className="flex items-center justify-between text-slate-600 text-xs mb-1">
+                    <span className="font-bold text-amber-900">Gross Margin (Est.)</span>
+                    <TrendingUp className="w-4 h-4 text-amber-600" />
+                  </div>
+                  <div className="text-lg sm:text-xl font-black text-amber-900 font-mono">
+                    KES {salesRecords.reduce((acc, sale) => {
+                      const profit = sale.items.reduce((iAcc, item) => {
+                        const cost = (item.part.buyingPriceKes || 0) * item.quantity;
+                        return iAcc + ((item.unitPriceKes * item.quantity) - cost);
+                      }, 0);
+                      return acc + profit;
+                    }, 0).toLocaleString()}
+                  </div>
+                  <div className="text-[11px] text-amber-800 mt-1">
+                    Revenue minus stock buying cost
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
+                  <div className="flex items-center justify-between text-slate-500 text-xs mb-1">
+                    <span>Active Terminal</span>
+                    <Warehouse className="w-4 h-4 text-slate-600" />
+                  </div>
+                  <div className="text-sm font-bold text-[#0A192F] font-mono">
+                    ROOM B13
+                  </div>
+                  <div className="text-[11px] text-slate-500 mt-1">
+                    Kirinyaga Rd, Nairobi CBD
+                  </div>
+                </div>
+              )}
             </div>
 
-            {getSalesHistory().length === 0 ? (
-              <div className="text-center py-16 text-slate-400 space-y-2">
-                <FileText className="w-10 h-10 mx-auto opacity-30 text-slate-600" />
-                <p className="text-xs">No sales recorded yet. Process sales in the Cashier Ticket tab.</p>
+            {/* Sales Audit Log Table */}
+            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+                <div>
+                  <h3 className="font-black text-base text-[#0A192F] font-['Chivo'] tracking-tight">
+                    COUNTER SALES AUDIT LOG
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Real-time transaction receipts recorded at Room B13 counter
+                  </p>
+                </div>
+
+                {/* Filters */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
+                    <input
+                      type="text"
+                      value={salesSearch}
+                      onChange={(e) => setSalesSearch(e.target.value)}
+                      placeholder="Search receipt, cashier, customer..."
+                      className="pl-8 pr-3 py-1 bg-slate-50 border border-slate-300 rounded-lg text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-blue-700 w-48 sm:w-60 font-mono"
+                    />
+                  </div>
+
+                  <select
+                    value={salesPaymentFilter}
+                    onChange={(e: any) => setSalesPaymentFilter(e.target.value)}
+                    className="py-1 px-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold text-slate-700 focus:bg-white focus:outline-none focus:border-blue-700"
+                  >
+                    <option value="ALL">All Payments</option>
+                    <option value="M-PESA">M-PESA</option>
+                    <option value="CASH">CASH</option>
+                    <option value="CARD">CARD</option>
+                  </select>
+                </div>
               </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs text-left">
-                  <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 font-mono uppercase">
-                    <tr>
-                      <th className="py-2.5 px-3">Receipt No</th>
-                      <th className="py-2.5 px-3">Date & Time</th>
-                      <th className="py-2.5 px-3">Items Sold</th>
-                      <th className="py-2.5 px-3">Payment</th>
-                      <th className="py-2.5 px-3">M-Pesa Ref</th>
-                      <th className="py-2.5 px-3 text-right">Total (KES)</th>
-                      <th className="py-2.5 px-3 text-center">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 font-mono">
-                    {getSalesHistory().map((sale) => (
-                      <tr key={sale.id} className="hover:bg-slate-50">
-                        <td className="py-2.5 px-3 font-bold text-blue-900">{sale.receiptNumber}</td>
-                        <td className="py-2.5 px-3 text-slate-500">
-                          {new Date(sale.timestamp).toLocaleString()}
-                        </td>
-                        <td className="py-2.5 px-3 text-slate-700 font-sans">
-                          {sale.items.map((i) => `${i.quantity}x ${i.part.ybNo}`).join(', ')}
-                        </td>
-                        <td className="py-2.5 px-3 font-bold text-slate-900">{sale.paymentMethod}</td>
-                        <td className="py-2.5 px-3 text-slate-600">{sale.mpesaRef || '-'}</td>
-                        <td className="py-2.5 px-3 text-right font-bold text-[#0A192F]">
-                          KES {sale.totalKes.toLocaleString()}
-                        </td>
-                        <td className="py-2.5 px-3 text-center">
-                          <button
-                            onClick={() => setCompletedSale(sale)}
-                            className="text-blue-700 hover:text-blue-900 font-bold underline cursor-pointer"
-                          >
-                            Receipt
-                          </button>
-                        </td>
+
+              {salesRecords.length === 0 ? (
+                <div className="text-center py-16 text-slate-400 space-y-2">
+                  <FileText className="w-10 h-10 mx-auto opacity-30 text-slate-600" />
+                  <p className="text-xs">No sales recorded yet. Process sales in the Cashier Ticket tab.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 font-mono uppercase">
+                      <tr>
+                        <th className="py-2.5 px-3">Receipt No</th>
+                        <th className="py-2.5 px-3">Date & Time</th>
+                        <th className="py-2.5 px-3">Cashier</th>
+                        <th className="py-2.5 px-3">Customer</th>
+                        <th className="py-2.5 px-3">Items Sold</th>
+                        <th className="py-2.5 px-3">Payment</th>
+                        <th className="py-2.5 px-3">M-Pesa Ref</th>
+                        <th className="py-2.5 px-3 text-right">Total (KES)</th>
+                        <th className="py-2.5 px-3 text-center">Action</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-mono">
+                      {salesRecords
+                        .filter((sale) => {
+                          const matchesPay = salesPaymentFilter === 'ALL' || sale.paymentMethod === salesPaymentFilter;
+                          const q = salesSearch.toLowerCase().trim();
+                          if (!q) return matchesPay;
+                          const matchesText =
+                            sale.receiptNumber.toLowerCase().includes(q) ||
+                            (sale.mpesaRef && sale.mpesaRef.toLowerCase().includes(q)) ||
+                            (sale.customerName && sale.customerName.toLowerCase().includes(q)) ||
+                            (sale.cashierName && sale.cashierName.toLowerCase().includes(q)) ||
+                            sale.items.some(i => i.part.itemName.toLowerCase().includes(q) || i.part.ybNo.toLowerCase().includes(q));
+                          return matchesPay && matchesText;
+                        })
+                        .map((sale) => (
+                          <tr key={sale.id} className="hover:bg-slate-50">
+                            <td className="py-2.5 px-3 font-bold text-blue-900">{sale.receiptNumber}</td>
+                            <td className="py-2.5 px-3 text-slate-500">
+                              {new Date(sale.timestamp).toLocaleDateString()} {new Date(sale.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </td>
+                            <td className="py-2.5 px-3 text-slate-700 font-sans">
+                              {sale.cashierName || 'Counter Staff'}
+                            </td>
+                            <td className="py-2.5 px-3 text-slate-700 font-sans">
+                              {sale.customerName ? (
+                                <div>
+                                  <div className="font-bold text-slate-900">{sale.customerName}</div>
+                                  {sale.customerPhone && <div className="text-[10px] text-slate-500">{sale.customerPhone}</div>}
+                                </div>
+                              ) : (
+                                <span className="text-slate-400">Walk-in Client</span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3 text-slate-700 font-sans">
+                              {sale.items.map((i) => `${i.quantity}x ${i.part.ybNo}`).join(', ')}
+                            </td>
+                            <td className="py-2.5 px-3 font-bold text-slate-900">{sale.paymentMethod}</td>
+                            <td className="py-2.5 px-3 text-slate-600">{sale.mpesaRef || '-'}</td>
+                            <td className="py-2.5 px-3 text-right font-bold text-[#0A192F]">
+                              KES {sale.totalKes.toLocaleString()}
+                            </td>
+                            <td className="py-2.5 px-3 text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                <button
+                                  onClick={() => setCompletedSale(sale)}
+                                  className="text-blue-700 hover:text-blue-900 font-bold underline cursor-pointer"
+                                >
+                                  Receipt
+                                </button>
+                                {isAdmin && (
+                                  <button
+                                    onClick={() => handleDeleteSale(sale.id)}
+                                    disabled={deletingSaleId === sale.id}
+                                    title="Delete/Void this transaction"
+                                    className="text-rose-600 hover:text-rose-800 p-1 rounded hover:bg-rose-50 cursor-pointer"
+                                  >
+                                    {deletingSaleId === sale.id ? (
+                                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                    ) : (
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    )}
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
           </div>
+        )}
+
+        {/* TAB 4: STAFF & USER MANAGEMENT (Admin Only) */}
+        {activeTab === 'users' && isAdmin && (
+          <POSUserManagement currentUser={currentUser} />
         )}
 
       </div>

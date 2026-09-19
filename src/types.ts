@@ -45,3 +45,17 @@ export interface StoredImageRecord {
   label: string;
   addedAt: string;
 }
+
+export type UserRole = 'admin' | 'cashier';
+
+export interface POSUser {
+  id: string;
+  username: string; // e.g. "Devine2026"
+  displayName: string;
+  password: string; // password credential stored in posUsers in Firestore
+  role: UserRole;
+  isActive: boolean;
+  createdAt: string;
+  lastLoginAt?: string;
+  createdBy?: string;
+}

@@ -532,6 +532,46 @@ export const getSalesHistory = (): POSSaleRecord[] => {
   }
 };
 
+export const deleteSaleRecord = async (saleId: string): Promise<void> => {
+  try {
+    const saleRef = doc(db, 'sales', saleId);
+    await deleteDoc(saleRef);
+  } catch (err) {
+    console.warn('Failed to delete sale from Firestore:', err);
+  }
+  const sales = getSalesHistory().filter((s) => s.id !== saleId);
+  localStorage.setItem(SALES_KEY, JSON.stringify(sales));
+};
+
+export const subscribeToSalesHistory = (callback: (sales: POSSaleRecord[]) => void): () => void => {
+  callback(getSalesHistory());
+  try {
+    const salesCol = collection(db, 'sales');
+    const unsub = onSnapshot(
+      salesCol,
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const list: POSSaleRecord[] = [];
+          snapshot.forEach((d) => {
+            list.push({ ...(d.data() as POSSaleRecord), id: d.id });
+          });
+          list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+          localStorage.setItem(SALES_KEY, JSON.stringify(list));
+          callback(list);
+        } else {
+          callback(getSalesHistory());
+        }
+      },
+      () => {
+        callback(getSalesHistory());
+      }
+    );
+    return unsub;
+  } catch {
+    return () => {};
+  }
+};
+
 // ==================== POS AUTHENTICATION ====================
 export const checkAdminAuth = (): boolean => {
   return localStorage.getItem(AUTH_KEY) === 'true';

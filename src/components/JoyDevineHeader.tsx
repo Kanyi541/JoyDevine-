@@ -4,7 +4,8 @@ import {
   Search, 
   ShoppingCart, 
   MessageCircle, 
-  X
+  X,
+  Store
 } from 'lucide-react';
 
 interface JoyDevineHeaderProps {
@@ -13,6 +14,7 @@ interface JoyDevineHeaderProps {
   cartCount: number;
   cartTotalKes: number;
   onOpenCart: () => void;
+  onOpenPOS?: () => void;
 }
 
 export const JoyDevineHeader: React.FC<JoyDevineHeaderProps> = ({
@@ -20,6 +22,7 @@ export const JoyDevineHeader: React.FC<JoyDevineHeaderProps> = ({
   onSearchChange,
   cartCount,
   onOpenCart,
+  onOpenPOS,
 }) => {
   return (
     <header className="sticky top-0 z-40 bg-white shadow-xs border-b border-slate-200">
@@ -100,6 +103,18 @@ export const JoyDevineHeader: React.FC<JoyDevineHeaderProps> = ({
                 </span>
               )}
             </button>
+
+            {/* Counter Staff / POS Button */}
+            {onOpenPOS && (
+              <button
+                onClick={onOpenPOS}
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 bg-[#0A192F] hover:bg-[#152e55] text-white rounded-lg font-bold text-xs transition-colors cursor-pointer shadow-xs min-h-[38px]"
+                title="Counter POS / Staff Access"
+              >
+                <Store className="w-4 h-4 text-blue-400" />
+                <span className="hidden lg:inline">Counter POS</span>
+              </button>
+            )}
 
           </div>
 

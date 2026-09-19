@@ -50,6 +50,21 @@
         "label": { "type": "string", "description": "Display label" },
         "addedAt": { "type": "string", "description": "Timestamp" }
       }
+    },
+    "posUsers": {
+      "title": "POS Staff & Admin Users",
+      "description": "Authorized staff and admin credentials for POS terminal operations",
+      "fields": {
+        "id": { "type": "string", "description": "Unique user ID" },
+        "username": { "type": "string", "description": "Unique username (e.g. Devine2026)" },
+        "displayName": { "type": "string", "description": "Staff member full name" },
+        "password": { "type": "string", "description": "User password credential" },
+        "role": { "type": "string", "description": "User role: admin or cashier" },
+        "isActive": { "type": "boolean", "description": "Account active flag" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" },
+        "lastLoginAt": { "type": "string", "description": "Last login timestamp" },
+        "createdBy": { "type": "string", "description": "Username of admin who created user" }
+      }
     }
   }
 }
