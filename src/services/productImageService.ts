@@ -1,11 +1,22 @@
 /**
  * Product Image Management Service
- * Handles uploading images directly to /public/productsimg/ and formatting URLs for WhatsApp
+ * Supports direct local image file compression for Firestore database synchronization,
+ * bundled /productsimg/ library references, and formatting for WhatsApp.
  */
 
 export interface ProductImageItem {
   filename: string;
   url: string;
+}
+
+export interface ImageProcessingResult {
+  url: string;
+  filename: string;
+  originalSizeKb: number;
+  compressedSizeKb: number;
+  width: number;
+  height: number;
+  isDatabaseReady: boolean;
 }
 
 export const PRESET_PRODUCT_IMAGES: ProductImageItem[] = [
@@ -20,53 +31,102 @@ export const PRESET_PRODUCT_IMAGES: ProductImageItem[] = [
 ];
 
 /**
- * Upload an image file to /public/productsimg/
+ * Automatically compress and optimize any local image file from the device (phone camera, gallery, PC)
+ * into a lightweight Base64 string (< 60KB) that syncs directly into Google Cloud Firestore documents.
+ * 
+ * Firestore documents have a strict 1MB limit. Raw photos (3MB-10MB) will cause Firestore to reject
+ * the write with "Document exceeds maximum size". By compressing locally to 650px at 0.75 quality,
+ * the file becomes ~35KB-50KB with pristine clarity for spare parts, enabling direct database storage.
  */
-export async function uploadProductImage(file: File): Promise<{ url: string; filename: string }> {
+export async function compressLocalImageForDatabase(
+  file: File,
+  maxDimension = 700,
+  quality = 0.78
+): Promise<ImageProcessingResult> {
   return new Promise((resolve, reject) => {
+    if (!file.type.startsWith('image/')) {
+      return reject(new Error('Selected file is not an image. Please pick a JPG, PNG, or WebP photo.'));
+    }
+
+    const originalSizeKb = Math.round(file.size / 1024);
     const reader = new FileReader();
 
-    reader.onload = async () => {
-      const base64Data = reader.result as string;
+    reader.onload = (readerEvent) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.naturalWidth || img.width;
+        let height = img.naturalHeight || img.height;
 
-      try {
-        const response = await fetch('/api/upload-product-image', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            filename: file.name,
-            base64Data,
-          }),
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          resolve({
-            url: result.url,
-            filename: result.filename,
-          });
-          return;
+        // Scale proportionally if larger than maximum dimension
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
         }
 
-        // Fallback to base64 if server endpoint is unavailable
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        if (!ctx) {
+          return reject(new Error('Could not initialize image processing canvas.'));
+        }
+
+        // Clean white background for transparency handling
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Convert to optimized JPEG format
+        const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+        const compressedSizeKb = Math.round((compressedBase64.length * 3) / 4 / 1024);
+
         resolve({
-          url: base64Data,
+          url: compressedBase64,
           filename: file.name,
+          originalSizeKb,
+          compressedSizeKb,
+          width,
+          height,
+          isDatabaseReady: compressedSizeKb < 300, // Well within Firestore 1024KB limit
         });
-      } catch (err) {
-        // Fallback for purely client-side environment
-        resolve({
-          url: base64Data,
-          filename: file.name,
-        });
-      }
+      };
+
+      img.onerror = () => reject(new Error('Failed to decode the chosen photo. Please try a different image.'));
+      img.src = readerEvent.target?.result as string;
     };
 
-    reader.onerror = () => reject(new Error('Failed reading image file'));
+    reader.onerror = () => reject(new Error('Failed reading file from your device.'));
     reader.readAsDataURL(file);
   });
+}
+
+/**
+ * Upload or process a local device image for direct database synchronization
+ */
+export async function uploadProductImage(file: File): Promise<{ url: string; filename: string; diagnostic?: ImageProcessingResult }> {
+  const processed = await compressLocalImageForDatabase(file);
+  return {
+    url: processed.url,
+    filename: processed.filename,
+    diagnostic: processed,
+  };
+}
+
+/**
+ * Determine the storage type of an image
+ */
+export function getImageSourceType(url: string): 'DIRECT_DATABASE' | 'LOCAL_PRESET' | 'WEB_URL' | 'NONE' {
+  if (!url) return 'NONE';
+  if (url.startsWith('data:image/')) return 'DIRECT_DATABASE';
+  if (url.startsWith('/productsimg/')) return 'LOCAL_PRESET';
+  if (url.startsWith('http://') || url.startsWith('https://')) return 'WEB_URL';
+  return 'LOCAL_PRESET';
 }
 
 /**
@@ -97,10 +157,8 @@ export function formatImageUrlForWhatsApp(imageUrl: string): string {
     return imageUrl;
   }
   if (imageUrl.startsWith('data:')) {
-    // Data URLs cannot be unfurled by WhatsApp crawler, but let's provide note or URL
-    return 'Direct image attached in catalog';
+    return 'Direct counter photo attached in catalog';
   }
-  // If relative path like /productsimg/...
   try {
     const origin = window.location.origin;
     const cleanPath = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;

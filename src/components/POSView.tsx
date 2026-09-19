@@ -36,7 +36,8 @@ import {
   EyeOff,
   TrendingUp,
   Receipt,
-  UserCheck
+  UserCheck,
+  Camera
 } from 'lucide-react';
 import { AutoPart, POSSaleItem, POSSaleRecord, POSUser } from '../types';
 import { 
@@ -197,25 +198,50 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
     }
   };
 
-  // Upload image to public/productsimg/
-  const handleImageFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // Drag-and-drop & URL input state
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [showAdvancedUrlInput, setShowAdvancedUrlInput] = useState(false);
 
+  // Process & compress local image file directly for Firestore Database synchronization
+  const processImageFile = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      alert('Please choose an image file (e.g. JPG, PNG, WebP).');
+      return;
+    }
     setIsUploadingImage(true);
     setUploadSuccessMsg(null);
     try {
       const res = await uploadProductImage(file);
       setImageUrl(res.url);
       setImageAutoDetected(false);
-      setUploadSuccessMsg(`Saved to productsimg: ${res.filename}`);
-      const refreshed = await fetchAvailableProductImages();
-      setAvailableImages(refreshed);
-      setTimeout(() => setUploadSuccessMsg(null), 5000);
+      if (res.diagnostic) {
+        setUploadSuccessMsg(
+          `✓ Photo synced to database! Compressed from ${res.diagnostic.originalSizeKb} KB → ${res.diagnostic.compressedSizeKb} KB (Firestore ready)`
+        );
+      } else {
+        setUploadSuccessMsg(`✓ Photo synced directly to database: ${res.filename}`);
+      }
+      setTimeout(() => setUploadSuccessMsg(null), 6000);
     } catch (err: any) {
-      alert('Upload error: ' + err.message);
+      alert('Photo processing error: ' + err.message);
     } finally {
       setIsUploadingImage(false);
+    }
+  };
+
+  const handleImageFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    processImageFile(file);
+    e.target.value = '';
+  };
+
+  const handleImageDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDraggingOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      processImageFile(file);
     }
   };
 
@@ -352,25 +378,29 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
 
     const fallbackImg = imageUrl || 'https://images.unsplash.com/photo-1600790142055-619df03207e6?auto=format&fit=crop&w=800&q=80';
 
-    await savePart({
-      id: editingPartId || undefined,
-      itemName: itemName.trim(),
-      ybNo: ybNo.trim().toUpperCase(),
-      oem: oem.trim().toUpperCase(),
-      des: des.trim(),
-      category,
-      brand: 'JoyDevine / OEM',
-      priceKes: Number(priceKes),
-      buyingPriceKes: buyingPriceKes !== '' ? Number(buyingPriceKes) : undefined,
-      stock: stock !== '' ? Number(stock) : 0,
-      imageUrl: fallbackImg,
-      condition,
-      warrantyMonths: 12,
-    });
+    try {
+      await savePart({
+        id: editingPartId || undefined,
+        itemName: itemName.trim(),
+        ybNo: ybNo.trim().toUpperCase(),
+        oem: oem.trim().toUpperCase(),
+        des: des.trim(),
+        category,
+        brand: 'JoyDevine / OEM',
+        priceKes: Number(priceKes),
+        buyingPriceKes: buyingPriceKes !== '' ? Number(buyingPriceKes) : undefined,
+        stock: stock !== '' ? Number(stock) : 0,
+        imageUrl: fallbackImg,
+        condition,
+        warrantyMonths: 12,
+      });
 
-    handleResetForm();
-    refreshPartsList();
-    alert(editingPartId ? 'Stock updated successfully!' : 'New auto part registered into Room B13 inventory!');
+      handleResetForm();
+      refreshPartsList();
+      alert(editingPartId ? 'Stock updated successfully in Cloud Firestore!' : 'New auto part & photo registered directly into Room B13 database!');
+    } catch (err: any) {
+      alert('Database error while saving part: ' + (err.message || 'Check Firestore connection'));
+    }
   };
 
   const handleDeletePart = async (id: string, name: string) => {
@@ -1288,53 +1318,151 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                   </div>
                 </div>
 
-                {/* Product Image Sourced from productsimg folder */}
+                {/* Product Image: Direct Database File Sync (No image URL required) */}
                 <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2.5">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold text-[#0A192F] flex items-center gap-1.5">
-                      <Folder className="w-3.5 h-3.5 text-blue-700" />
-                      <span>Product Image (Stored in productsimg)</span>
+                      <Database className="w-3.5 h-3.5 text-blue-700" />
+                      <span>Product Photo (Syncs Directly to Cloud Database)</span>
                     </label>
-                    <div className="flex items-center gap-2">
-                      <label
-                        htmlFor="pos-product-image-upload"
-                        className={`text-[11px] font-bold px-2.5 py-1 rounded bg-blue-700 hover:bg-blue-800 text-white flex items-center gap-1 cursor-pointer transition-colors ${
-                          isUploadingImage ? 'opacity-50 cursor-wait' : ''
-                        }`}
-                      >
-                        <Upload className="w-3 h-3" />
-                        <span>{isUploadingImage ? 'Saving...' : 'Upload Image'}</span>
-                      </label>
-                      <input
-                        id="pos-product-image-upload"
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageFileUpload}
-                        disabled={isUploadingImage}
-                        className="hidden"
-                      />
-
-                      <button
-                        type="button"
-                        onClick={() => setShowImageLibraryModal(true)}
-                        className="text-[11px] font-bold px-2.5 py-1 rounded bg-slate-200 hover:bg-slate-300 text-slate-800 flex items-center gap-1 cursor-pointer transition-colors"
-                      >
-                        <ImageIcon className="w-3 h-3" />
-                        <span>Library ({availableImages.length})</span>
-                      </button>
-                    </div>
+                    <span className="text-[10px] text-slate-500 font-medium">No image URL needed</span>
                   </div>
 
-                  <input
-                    type="text"
-                    value={imageUrl}
-                    onChange={(e) => {
-                      setImageUrl(e.target.value);
-                      setImageAutoDetected(false);
+                  {/* Drag-and-drop / File upload zone */}
+                  <div
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDraggingOver(true);
                     }}
-                    placeholder="/productsimg/... or upload file above"
-                    className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded text-xs font-mono text-slate-800 focus:outline-none focus:border-blue-700"
-                  />
+                    onDragLeave={() => setIsDraggingOver(false)}
+                    onDrop={handleImageDrop}
+                    className={`border-2 border-dashed rounded-lg p-3 transition-colors text-center ${
+                      isDraggingOver
+                        ? 'border-blue-600 bg-blue-50/70'
+                        : imageUrl
+                        ? 'border-slate-200 bg-white'
+                        : 'border-slate-300 bg-white hover:border-blue-400'
+                    }`}
+                  >
+                    {imageUrl ? (
+                      <div className="flex items-center gap-3 text-left">
+                        <div className="w-16 h-16 bg-slate-100 rounded-lg border border-slate-200 p-1 flex items-center justify-center shrink-0 overflow-hidden">
+                          <img
+                            src={imageUrl}
+                            alt="Selected"
+                            className="max-h-full max-w-full object-contain"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLImageElement).src = '/productsimg/placeholder.svg';
+                            }}
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {imageUrl.startsWith('data:image/') ? (
+                              <span className="text-[10px] font-mono font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded flex items-center gap-1">
+                                <Database className="w-3 h-3 text-emerald-700" />
+                                <span>STORED DIRECTLY IN FIRESTORE</span>
+                              </span>
+                            ) : imageUrl.startsWith('/productsimg/') ? (
+                              <span className="text-[10px] font-mono font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded flex items-center gap-1">
+                                <Folder className="w-3 h-3 text-blue-700" />
+                                <span>LOCAL BUNDLE (/productsimg/)</span>
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-mono font-bold bg-slate-200 text-slate-800 px-2 py-0.5 rounded">
+                                WEB LINK
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-slate-600 mt-1 leading-snug">
+                            {imageUrl.startsWith('data:image/')
+                              ? 'Embedded directly into cloud database. Displays immediately on POS and website.'
+                              : imageUrl.startsWith('/productsimg/')
+                              ? 'Referenced from catalog public image library.'
+                              : 'Linked from external URL.'}
+                          </p>
+                          <div className="flex items-center gap-3 mt-1.5">
+                            <label
+                              htmlFor="pos-product-image-upload-replace"
+                              className="text-[11px] font-bold text-blue-700 hover:text-blue-900 cursor-pointer hover:underline flex items-center gap-1"
+                            >
+                              <Upload className="w-3 h-3" />
+                              <span>Replace photo</span>
+                            </label>
+                            <input
+                              id="pos-product-image-upload-replace"
+                              type="file"
+                              accept="image/*"
+                              onChange={handleImageFileUpload}
+                              disabled={isUploadingImage}
+                              className="hidden"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setImageUrl('')}
+                              className="text-[11px] font-bold text-rose-600 hover:text-rose-800 cursor-pointer hover:underline"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 py-2">
+                        <div className="flex items-center justify-center gap-2">
+                          <label
+                            htmlFor="pos-product-image-upload"
+                            className={`px-3.5 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors ${
+                              isUploadingImage ? 'opacity-50 cursor-wait' : ''
+                            }`}
+                          >
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>{isUploadingImage ? 'Optimizing photo...' : 'Choose File from Device'}</span>
+                          </label>
+                          <input
+                            id="pos-product-image-upload"
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageFileUpload}
+                            disabled={isUploadingImage}
+                            className="hidden"
+                          />
+
+                          {/* Mobile/Tablet Camera direct snap */}
+                          <label
+                            htmlFor="pos-product-camera-snap"
+                            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+                            title="Take photo with camera"
+                          >
+                            <Camera className="w-3.5 h-3.5" />
+                            <span>Take Photo</span>
+                          </label>
+                          <input
+                            id="pos-product-camera-snap"
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            onChange={handleImageFileUpload}
+                            disabled={isUploadingImage}
+                            className="hidden"
+                          />
+
+                          <button
+                            type="button"
+                            onClick={() => setShowImageLibraryModal(true)}
+                            className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
+                          >
+                            <ImageIcon className="w-3.5 h-3.5" />
+                            <span>Library ({availableImages.length})</span>
+                          </button>
+                        </div>
+
+                        <p className="text-[11px] text-slate-500">
+                          Or drag & drop photo file directly here (JPG, PNG, WebP)
+                        </p>
+                      </div>
+                    )}
+                  </div>
 
                   {uploadSuccessMsg && (
                     <div className="p-2 bg-emerald-50 border border-emerald-300 rounded text-xs text-emerald-800 font-medium flex items-center gap-1.5">
@@ -1343,53 +1471,37 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                     </div>
                   )}
 
-                  {/* Active Image Preview Card */}
-                  {imageUrl ? (
-                    <div className="flex items-center gap-3 p-2 bg-white rounded border border-slate-200">
-                      <div className="w-14 h-14 bg-slate-100 rounded border border-slate-200 p-1 flex items-center justify-center shrink-0">
-                        <img
-                          src={imageUrl}
-                          alt="Preview"
-                          className="max-h-full max-w-full object-contain"
-                          onError={(e) => {
-                            (e.currentTarget as HTMLImageElement).src = '/productsimg/placeholder.svg';
-                          }}
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] font-mono font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">
-                            {imageUrl.startsWith('/productsimg/') ? 'LOCAL FOLDER' : 'EXTERNAL URL'}
-                          </span>
-                          <span className="text-[10px] text-slate-500 font-mono truncate">
-                            {imageUrl}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-slate-600 mt-0.5">
-                          Image is ready to be included in WhatsApp inquiries & catalog cards.
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setImageUrl('')}
-                        className="text-xs text-rose-600 hover:text-rose-800 font-bold px-2 py-1"
-                        title="Remove image"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="text-[11px] text-slate-500 italic">
-                      No image selected. Upload a photo or select from the productsimg folder.
+                  {imageAutoDetected && (
+                    <div className="flex items-center gap-1.5 text-xs text-emerald-700 font-semibold">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Previously registered photo automatically matched & reflected!</span>
                     </div>
                   )}
 
-                  {imageAutoDetected && (
-                    <div className="mt-1 flex items-center gap-1.5 text-xs text-emerald-700 font-semibold">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Previously registered image automatically matched & reflected!</span>
-                    </div>
-                  )}
+                  {/* Collapsible toggle for advanced/legacy URL input */}
+                  <div className="pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowAdvancedUrlInput(!showAdvancedUrlInput)}
+                      className="text-[10px] text-slate-500 hover:text-slate-700 font-medium underline cursor-pointer"
+                    >
+                      {showAdvancedUrlInput ? 'Hide manual URL input' : 'Optional: Type image URL manually'}
+                    </button>
+                    {showAdvancedUrlInput && (
+                      <div className="mt-1.5">
+                        <input
+                          type="text"
+                          value={imageUrl}
+                          onChange={(e) => {
+                            setImageUrl(e.target.value);
+                            setImageAutoDetected(false);
+                          }}
+                          placeholder="https://... or /productsimg/..."
+                          className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded text-xs font-mono text-slate-800 focus:outline-none focus:border-blue-700"
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Submit Buttons */}

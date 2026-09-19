@@ -319,7 +319,11 @@ export const savePart = async (partData: Omit<AutoPart, 'id' | 'createdAt'> & { 
 
   // Update local cache
   cachedParts = [...parts];
-  localStorage.setItem(PARTS_KEY, JSON.stringify(parts));
+  try {
+    localStorage.setItem(PARTS_KEY, JSON.stringify(parts));
+  } catch (storageErr) {
+    console.warn('Local storage quota notice (database sync will proceed):', storageErr);
+  }
   notifyParts(cachedParts, dbStatus.isConnected);
 
   // Persist directly to Google Cloud Firestore
@@ -327,9 +331,11 @@ export const savePart = async (partData: Omit<AutoPart, 'id' | 'createdAt'> & { 
     const partRef = doc(db, 'parts', savedPart.id);
     await setDoc(partRef, savedPart, { merge: true });
     dbStatus.lastSyncTime = new Date().toLocaleTimeString();
+    dbStatus.partCount = parts.length;
     notifyStatus();
-  } catch (err) {
-    console.warn('Failed saving part to Firestore (persisted locally):', err);
+  } catch (err: any) {
+    console.error('Failed saving part to Firestore:', err);
+    throw new Error(`Cloud Database Sync Note: ${err.message || 'Firestore write failed'}`);
   }
 
   // Remember this image for auto-reflection
@@ -436,7 +442,11 @@ export const rememberImage = async (key: string, imageUrl: string, label: string
   } else {
     images.unshift(rec);
   }
-  localStorage.setItem(IMAGES_KEY, JSON.stringify(images));
+  try {
+    localStorage.setItem(IMAGES_KEY, JSON.stringify(images));
+  } catch (storageErr) {
+    console.warn('Local storage image cache notice:', storageErr);
+  }
 
   // Also sync image memory to Firestore
   try {
