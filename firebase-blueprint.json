@@ -1,0 +1,55 @@
+{
+  "entities": {
+    "parts": {
+      "title": "Auto Parts Inventory",
+      "description": "Stock of genuine auto spare parts with YB No, OEM, descriptions, photos, and prices",
+      "fields": {
+        "id": { "type": "string", "description": "Unique part ID" },
+        "itemName": { "type": "string", "description": "Name of the component" },
+        "ybNo": { "type": "string", "description": "JoyDevine catalog YB Number" },
+        "oem": { "type": "string", "description": "Original Equipment Manufacturer code" },
+        "des": { "type": "string", "description": "Product Description and vehicle compatibility" },
+        "category": { "type": "string", "description": "Category name" },
+        "brand": { "type": "string", "description": "Brand or manufacturer" },
+        "priceKes": { "type": "number", "description": "Selling retail price in KES" },
+        "costKes": { "type": "number", "description": "Unit cost in KES" },
+        "stock": { "type": "number", "description": "Available inventory count" },
+        "minStockAlert": { "type": "number", "description": "Minimum stock warning threshold" },
+        "location": { "type": "string", "description": "Physical shelf location in Room B13" },
+        "condition": { "type": "string", "description": "Condition e.g. Brand New" },
+        "imageUrl": { "type": "string", "description": "Public URL for part photo" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "description": "Update timestamp" }
+      }
+    },
+    "sales": {
+      "title": "POS Counter Sales",
+      "description": "Receipts and sales transactions recorded from counter POS terminal",
+      "fields": {
+        "id": { "type": "string", "description": "Unique transaction ID" },
+        "receiptNumber": { "type": "string", "description": "Human-readable receipt number" },
+        "items": { "type": "array", "description": "Line items sold" },
+        "subtotalKes": { "type": "number", "description": "Subtotal in KES" },
+        "discountKes": { "type": "number", "description": "Discount in KES" },
+        "totalKes": { "type": "number", "description": "Final paid amount in KES" },
+        "paymentMethod": { "type": "string", "description": "Cash or M-Pesa" },
+        "mpesaRef": { "type": "string", "description": "M-Pesa confirmation code" },
+        "customerName": { "type": "string", "description": "Buyer or garage name" },
+        "customerPhone": { "type": "string", "description": "Buyer phone number" },
+        "servedBy": { "type": "string", "description": "Counter attendant" },
+        "timestamp": { "type": "string", "description": "Sale timestamp" }
+      }
+    },
+    "imageMemory": {
+      "title": "Image Association Memory",
+      "description": "Cached associations between YB/OEM/Item names and product photos",
+      "fields": {
+        "id": { "type": "string", "description": "Unique record ID" },
+        "key": { "type": "string", "description": "Normalized key (YB No, OEM, or Item Name)" },
+        "imageUrl": { "type": "string", "description": "Photo URL" },
+        "label": { "type": "string", "description": "Display label" },
+        "addedAt": { "type": "string", "description": "Timestamp" }
+      }
+    }
+  }
+}
