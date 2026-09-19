@@ -6,7 +6,12 @@ import { CustomerCartModal, CartItem } from './components/CustomerCartModal';
 import { LocationAndContactSection } from './components/LocationAndContactSection';
 import { POSView } from './components/POSView';
 import { AutoPart } from './types';
-import { getStoredParts, subscribeToPartsCatalog, subscribeToDatabaseStatus } from './services/inventoryStorage';
+import { 
+  getStoredParts, 
+  subscribeToPartsCatalog, 
+  subscribeToDatabaseStatus,
+  fetchDirectlyFromFirebase 
+} from './services/inventoryStorage';
 
 export const App: React.FC = () => {
   // Check if URL was requested as /pos, #pos, /#/pos, or ?pos
@@ -82,7 +87,9 @@ export const App: React.FC = () => {
   };
 
   const handleRefreshCatalog = () => {
-    setParts(getStoredParts());
+    fetchDirectlyFromFirebase().catch(() => {
+      setParts(getStoredParts());
+    });
   };
 
   const handleAddToCart = (part: AutoPart) => {

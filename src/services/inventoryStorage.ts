@@ -13,12 +13,22 @@ import {
   onSnapshot 
 } from 'firebase/firestore';
 
-const PARTS_KEY = 'joydevine_parts_catalog_v2';
+const PARTS_KEY = 'joydevine_parts_from_firestore_v4';
 const SALES_KEY = 'joydevine_pos_sales_v2';
 const IMAGES_KEY = 'joydevine_images_memory_v2';
 const AUTH_KEY = 'joydevine_pos_auth_v1';
 const PASSWORD_KEY = 'joydevine_pos_pass_v1';
 const DEFAULT_PASSWORD = 'joydevine2026';
+
+// Clean up previous dummy data and old cache keys if present
+try {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    window.localStorage.removeItem('joydevine_parts_catalog_v2');
+    window.localStorage.removeItem('joydevine_parts_from_firestore_v3');
+  }
+} catch {
+  // Ignore storage access errors
+}
 
 // Firestore collection references
 const partsCol = collection(db, 'parts');
@@ -77,6 +87,7 @@ const notifyParts = (parts: AutoPart[], isFromFirebase: boolean) => {
 // Cached parts in memory
 let cachedParts: AutoPart[] = [];
 let firestoreListenerAttached = false;
+let initialDirectFetchTriggered = false;
 
 /**
  * Subscribe to live inventory catalog changes
@@ -84,12 +95,20 @@ let firestoreListenerAttached = false;
 export const subscribeToPartsCatalog = (listener: PartsListener): (() => void) => {
   partsListeners.add(listener);
 
-  // Send current cached parts immediately
+  // Send current cached parts immediately (even if empty [])
   const initial = getStoredParts();
   listener(initial, dbStatus.isConnected);
 
   // Start Firestore real-time sync if not yet running
   initFirestoreSync();
+
+  // Also immediately trigger direct fetch once on startup so data is loaded without delay
+  if (!initialDirectFetchTriggered) {
+    initialDirectFetchTriggered = true;
+    fetchDirectlyFromFirebase().catch((err) => {
+      console.warn('[Firebase Firestore] Direct fetch note:', err);
+    });
+  }
 
   return () => {
     partsListeners.delete(listener);
@@ -121,33 +140,36 @@ export const initFirestoreSync = () => {
     const q = query(partsCol);
     onSnapshot(
       q,
-      async (snapshot) => {
-        if (snapshot.empty) {
-          console.log('[Firebase Firestore] Collection "parts" is empty. Auto-seeding initial parts into cloud...');
-          await seedFirestoreParts();
-        } else {
-          const parts: AutoPart[] = [];
-          snapshot.forEach((docSnap) => {
-            parts.push(docSnap.data() as AutoPart);
+      (snapshot) => {
+        const parts: AutoPart[] = [];
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data() as AutoPart;
+          parts.push({
+            ...data,
+            id: data.id || docSnap.id,
           });
+        });
 
-          cachedParts = parts;
+        cachedParts = parts;
+        try {
           localStorage.setItem(PARTS_KEY, JSON.stringify(parts));
-
-          dbStatus = {
-            ...dbStatus,
-            isLive: true,
-            isConnected: true,
-            isSyncing: false,
-            source: 'Firebase Firestore',
-            partCount: parts.length,
-            lastSyncTime: new Date().toLocaleTimeString(),
-            error: null,
-          };
-
-          notifyStatus();
-          notifyParts(parts, true);
+        } catch {
+          // Ignore quota error
         }
+
+        dbStatus = {
+          ...dbStatus,
+          isLive: true,
+          isConnected: true,
+          isSyncing: false,
+          source: 'Firebase Firestore',
+          partCount: parts.length,
+          lastSyncTime: new Date().toLocaleTimeString(),
+          error: null,
+        };
+
+        notifyStatus();
+        notifyParts(parts, true);
       },
       (err) => {
         console.warn('[Firebase Firestore] Real-time listener notice:', err);
@@ -185,35 +207,22 @@ export const fetchDirectlyFromFirebase = async (): Promise<AutoPart[]> => {
 
   try {
     const snapshot = await getDocs(partsCol);
-    if (snapshot.empty) {
-      await seedFirestoreParts();
-      const retrySnap = await getDocs(partsCol);
-      const items: AutoPart[] = [];
-      retrySnap.forEach((docSnap) => items.push(docSnap.data() as AutoPart));
-      cachedParts = items;
-      localStorage.setItem(PARTS_KEY, JSON.stringify(items));
-      dbStatus = {
-        ...dbStatus,
-        isLive: true,
-        isConnected: true,
-        isSyncing: false,
-        source: 'Firebase Firestore',
-        partCount: items.length,
-        lastSyncTime: new Date().toLocaleTimeString(),
-        error: null,
-      };
-      notifyStatus();
-      notifyParts(items, true);
-      return items;
-    }
-
     const items: AutoPart[] = [];
     snapshot.forEach((docSnap) => {
-      items.push(docSnap.data() as AutoPart);
+      const data = docSnap.data() as AutoPart;
+      items.push({
+        ...data,
+        id: data.id || docSnap.id,
+      });
     });
 
     cachedParts = items;
-    localStorage.setItem(PARTS_KEY, JSON.stringify(items));
+    try {
+      localStorage.setItem(PARTS_KEY, JSON.stringify(items));
+    } catch {
+      // Ignore quota error
+    }
+
     dbStatus = {
       ...dbStatus,
       isLive: true,
@@ -239,7 +248,7 @@ export const fetchDirectlyFromFirebase = async (): Promise<AutoPart[]> => {
 };
 
 /**
- * Seed Firestore with initial parts pointing to /productsimg/
+ * Seed Firestore with initial parts pointing to /productsimg/ (only when explicitly requested by user)
  */
 export const seedFirestoreParts = async (overwriteWithProductsImg = false): Promise<void> => {
   try {
@@ -253,24 +262,24 @@ export const seedFirestoreParts = async (overwriteWithProductsImg = false): Prom
 };
 
 /**
- * Synchronous cached parts access with graceful fallback
+ * Synchronous cached parts access - returns empty array if no parts in cache
  */
 export const getStoredParts = (): AutoPart[] => {
   if (cachedParts.length > 0) return cachedParts;
   try {
     const raw = localStorage.getItem(PARTS_KEY);
     if (!raw) {
-      localStorage.setItem(PARTS_KEY, JSON.stringify(INITIAL_PARTS));
-      seedImageMemory(INITIAL_PARTS);
-      cachedParts = INITIAL_PARTS;
-      return INITIAL_PARTS;
+      return [];
     }
     const parsed = JSON.parse(raw);
-    cachedParts = parsed;
-    return parsed;
+    if (Array.isArray(parsed)) {
+      cachedParts = parsed;
+      return parsed;
+    }
+    return [];
   } catch (err) {
     console.error('Failed reading parts from cache', err);
-    return INITIAL_PARTS;
+    return [];
   }
 };
 

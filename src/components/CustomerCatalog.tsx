@@ -8,10 +8,10 @@ import {
   Eye, 
   CheckCircle2,
   AlertTriangle,
-  Car
+  Car,
+  Package
 } from 'lucide-react';
 import { AutoPart } from '../types';
-import { JOYDEVINE_CATEGORIES } from '../data/joydevineParts';
 import { formatImageUrlForWhatsApp } from '../services/productImageService';
 
 interface CustomerCatalogProps {
@@ -31,6 +31,7 @@ export const CustomerCatalog: React.FC<CustomerCatalogProps> = ({
   const [showLowStockOnly, setShowLowStockOnly] = useState<boolean>(false);
   const [copiedOem, setCopiedOem] = useState<string | null>(null);
   const [addedItemNotice, setAddedItemNotice] = useState<string | null>(null);
+  const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set());
 
   const handleCopyOem = (e: React.MouseEvent, oem: string) => {
     e.stopPropagation();
@@ -45,6 +46,42 @@ export const CustomerCatalog: React.FC<CustomerCatalogProps> = ({
     setAddedItemNotice(part.id);
     setTimeout(() => setAddedItemNotice(null), 1500);
   };
+
+  const handleImageError = (partId: string) => {
+    setBrokenImages((prev) => new Set(prev).add(partId));
+  };
+
+  // If there are no items in the Firebase database at all, show nothing just an empty card
+  if (parts.length === 0) {
+    return (
+      <section className="py-6 sm:py-8 px-3 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5 sm:gap-5">
+          <div className="bg-white rounded-xl overflow-hidden shadow-xs border border-slate-200 flex flex-col justify-between min-h-[380px]">
+            {/* Empty Image Header */}
+            <div className="relative aspect-4/3 bg-slate-50 border-b border-slate-100 flex items-center justify-center p-4">
+              <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-300">
+                <Package className="w-6 h-6 stroke-[1.5]" />
+              </div>
+            </div>
+
+            {/* Empty Body */}
+            <div className="p-3.5 sm:p-4 flex-1"></div>
+
+            {/* Empty Footer */}
+            <div className="p-3.5 sm:p-4 pt-0">
+              <div className="w-full h-10 bg-slate-50 border border-slate-200/80 rounded-lg"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // Dynamic categories based on items present in the database
+  const availableCategories = [
+    'All Parts',
+    ...Array.from(new Set(parts.map((p) => p.category).filter(Boolean))),
+  ];
 
   const lowStockCount = parts.filter((p) => p.stock < 5).length;
 
@@ -67,13 +104,13 @@ export const CustomerCatalog: React.FC<CustomerCatalogProps> = ({
       {/* Category Filter Pills & Low Stock Quick Filter */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none -mx-3 px-3 sm:mx-0 sm:px-0 flex-1">
-          {JOYDEVINE_CATEGORIES.map((cat) => {
+          {availableCategories.map((cat) => {
             const isSelected = selectedCategory === cat;
             return (
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-3.5 sm:px-4 py-2 rounded-lg text-xs sm:text-xs font-bold whitespace-nowrap transition-all cursor-pointer border min-h-[40px] flex items-center shrink-0 ${
+                className={`px-3.5 sm:px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer border min-h-[40px] flex items-center shrink-0 ${
                   isSelected
                     ? 'bg-[#0A192F] text-white border-[#0A192F] shadow-xs'
                     : 'bg-white text-slate-700 hover:bg-slate-50 border-slate-300'
@@ -105,26 +142,38 @@ export const CustomerCatalog: React.FC<CustomerCatalogProps> = ({
         </button>
       </div>
 
-      {/* Parts Grid: Highly responsive on all device sizes */}
+      {/* Parts Grid */}
       {filteredParts.length === 0 ? (
-        <div className="text-center py-12 sm:py-16 bg-white border border-slate-200 rounded-xl p-6 sm:p-8 max-w-md mx-auto space-y-3 shadow-xs">
-          <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
-            <Search className="w-6 h-6" />
-          </div>
-          <h3 className="text-sm sm:text-base font-bold text-slate-900">No Matching Parts Found</h3>
-          <p className="text-xs text-slate-600 leading-relaxed">
-            We continuously stock new parts. Contact our counter directly or check with us on WhatsApp:
-          </p>
-          <div className="pt-2">
-            <a
-              href="https://wa.me/254720357361?text=Hello%20JoyDevine%20Auto%20Spares,%20I%20am%20looking%20for%20a%20part%20not%20found%20in%20online%20catalog"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg shadow-xs transition-colors min-h-[44px]"
-            >
-              <MessageCircle className="w-4 h-4" />
-              <span>Inquire on WhatsApp (0720 357 361)</span>
-            </a>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5 sm:gap-5">
+          <div className="bg-white rounded-xl overflow-hidden shadow-xs border border-slate-200 flex flex-col justify-between min-h-[380px]">
+            <div className="relative aspect-4/3 bg-slate-50 border-b border-slate-100 flex flex-col items-center justify-center p-4">
+              <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 mb-1">
+                <Search className="w-6 h-6 stroke-[1.5]" />
+              </div>
+              <span className="text-[11px] font-mono text-slate-400">No match</span>
+            </div>
+
+            <div className="p-3.5 sm:p-4 space-y-2 flex-1 flex flex-col justify-center text-center">
+              <h3 className="font-bold text-xs sm:text-sm text-slate-700">
+                No Matching Parts
+              </h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                {searchQuery ? `No results for "${searchQuery}"` : 'No items match current filters'}
+              </p>
+            </div>
+
+            <div className="p-3.5 sm:p-4 pt-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedCategory('All Parts');
+                  setShowLowStockOnly(false);
+                }}
+                className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold text-center cursor-pointer transition-colors"
+              >
+                Reset Filters
+              </button>
+            </div>
           </div>
         </div>
       ) : (
@@ -138,6 +187,7 @@ export const CustomerCatalog: React.FC<CustomerCatalogProps> = ({
 
             const isLowStock = part.stock < 5;
             const isOutOfStock = part.stock <= 0;
+            const isBrokenImg = brokenImages.has(part.id) || !part.imageUrl;
 
             return (
               <div
@@ -154,12 +204,20 @@ export const CustomerCatalog: React.FC<CustomerCatalogProps> = ({
                 <div>
                   {/* Part Image Area */}
                   <div className="relative aspect-4/3 bg-slate-50 overflow-hidden border-b border-slate-200 flex items-center justify-center p-3 sm:p-4">
-                    <img
-                      src={part.imageUrl}
-                      alt={part.itemName}
-                      className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-200"
-                      loading="lazy"
-                    />
+                    {isBrokenImg ? (
+                      <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 bg-slate-100/70 rounded-lg p-2">
+                        <Package className="w-10 h-10 stroke-[1.5] text-slate-300 mb-1" />
+                        <span className="text-[11px] font-mono text-slate-500 font-semibold">{part.ybNo}</span>
+                      </div>
+                    ) : (
+                      <img
+                        src={part.imageUrl}
+                        alt={part.itemName}
+                        onError={() => handleImageError(part.id)}
+                        className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-200"
+                        loading="lazy"
+                      />
+                    )}
 
                     {/* YB No Badge (Top Left) */}
                     <div className="absolute top-2.5 left-2.5 z-10">
@@ -293,3 +351,4 @@ export const CustomerCatalog: React.FC<CustomerCatalogProps> = ({
     </section>
   );
 };
+
