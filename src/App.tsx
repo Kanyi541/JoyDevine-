@@ -7,6 +7,14 @@ import { LocationAndContactSection } from './components/LocationAndContactSectio
 import { POSView } from './components/POSView';
 import { AutoPart } from './types';
 import { 
+  PRIMARY_PHONE_DISPLAY, 
+  PRIMARY_PHONE_TEL, 
+  SECONDARY_PHONE_1_DISPLAY, 
+  SECONDARY_PHONE_1_TEL, 
+  SECONDARY_PHONE_2_DISPLAY, 
+  SECONDARY_PHONE_2_TEL 
+} from './services/whatsappService';
+import { 
   getStoredParts, 
   subscribeToPartsCatalog, 
   subscribeToDatabaseStatus,
@@ -212,7 +220,7 @@ export const App: React.FC = () => {
             <div className="md:col-span-2 space-y-3">
               <div className="flex items-center gap-2">
                 <span className="font-black text-lg text-white font-['Chivo'] tracking-tight">
-                  JOYDEVINE AUTO SPARES
+                  JOYDIVINE AUTO SPARES
                 </span>
                 <span className="text-[10px] bg-white text-[#0A192F] px-1.5 py-0.5 rounded font-mono font-black">
                   ROOM B13
@@ -222,7 +230,7 @@ export const App: React.FC = () => {
                 Direct importer and counter retailer of genuine brake wheel cylinders, hydraulic master cylinders, heavy-duty shock boots, brake hoses, and control cables in Nairobi Central Business District.
               </p>
               <div className="text-slate-400 text-[11px] font-medium">
-                Kirinyaga Road, near Kirinyaga Crescent, opposite Seventies Plaza, Nairobi, Kenya.
+                Kirinyaga Crescent, opposite Seventies Plaza (Room B13), Nairobi, Kenya.
               </div>
             </div>
 
@@ -243,13 +251,28 @@ export const App: React.FC = () => {
             <div className="space-y-3">
               <h4 className="text-white font-bold font-mono uppercase text-xs">Counter Contacts</h4>
               <div className="space-y-1.5 text-xs">
-                <a href="tel:+254720357361" className="block text-slate-300 hover:text-white font-mono">
-                  Tel: 0720 357 361
+                <a 
+                  href={`tel:${PRIMARY_PHONE_TEL}`} 
+                  className="block text-emerald-400 hover:text-emerald-300 font-mono font-bold"
+                  title="Call Main Hotline"
+                >
+                  Primary Hotline: {PRIMARY_PHONE_DISPLAY}
                 </a>
-                <a href="tel:+254722604419" className="block text-slate-300 hover:text-white font-mono">
-                  Tel: 0722 604 419
+                <a 
+                  href={`tel:${SECONDARY_PHONE_1_TEL}`} 
+                  className="block text-slate-300 hover:text-white font-mono"
+                  title="Call Secondary Counter Line"
+                >
+                  Secondary Line: {SECONDARY_PHONE_1_DISPLAY}
                 </a>
-                <div className="text-slate-400 text-[11px]">
+                <a 
+                  href={`tel:${SECONDARY_PHONE_2_TEL}`} 
+                  className="block text-slate-300 hover:text-white font-mono"
+                  title="Call Sales Desk"
+                >
+                  Counter Desk: {SECONDARY_PHONE_2_DISPLAY}
+                </a>
+                <div className="text-slate-400 text-[11px] pt-1">
                   Hours: Mon - Sat 7:30 AM - 6:30 PM
                 </div>
               </div>
@@ -260,12 +283,12 @@ export const App: React.FC = () => {
           {/* Bottom Copyright & Area */}
           <div className="pt-6 border-t border-[#14284B] flex flex-col sm:flex-row items-center justify-between gap-3 text-slate-500 text-[11px]">
             <div>
-              © {new Date().getFullYear()} JoyDevine Auto Spares. All rights reserved. Kirinyaga Road, Nairobi.
+              © {new Date().getFullYear()} JoyDivine Auto Spares. All rights reserved. Kirinyaga Crescent, opposite Seventies Plaza, Nairobi.
             </div>
             <div className="flex items-center gap-4">
               <span>Genuine Auto Spares Nairobi</span>
               <span>•</span>
-              <span>Counter Room B13</span>
+              <span>Room B13 Kirinyaga Crescent</span>
               <span>•</span>
               <button
                 onClick={handleOpenPOS}

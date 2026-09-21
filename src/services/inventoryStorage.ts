@@ -349,6 +349,58 @@ export const savePart = async (partData: Omit<AutoPart, 'id' | 'createdAt'> & { 
 };
 
 /**
+ * Save multiple parts of a category in batch to both Firestore and local state
+ */
+export const batchSaveParts = async (partsData: Array<Omit<AutoPart, 'id' | 'createdAt'> & { id?: string }>): Promise<AutoPart[]> => {
+  const parts = getStoredParts();
+  const now = new Date().toISOString();
+  const savedParts: AutoPart[] = [];
+
+  for (let i = 0; i < partsData.length; i++) {
+    const item = partsData[i];
+    const newPart: AutoPart = {
+      ...item,
+      id: item.id || `jd-${Date.now()}-${i}-${Math.floor(Math.random() * 1000)}`,
+      createdAt: now,
+    } as AutoPart;
+
+    savedParts.push(newPart);
+    parts.unshift(newPart);
+
+    if (newPart.imageUrl) {
+      rememberImage(newPart.ybNo, newPart.imageUrl, newPart.itemName);
+      rememberImage(newPart.oem, newPart.imageUrl, newPart.itemName);
+      rememberImage(newPart.itemName, newPart.imageUrl, newPart.itemName);
+    }
+  }
+
+  cachedParts = [...parts];
+  try {
+    localStorage.setItem(PARTS_KEY, JSON.stringify(parts));
+  } catch (storageErr) {
+    console.warn('Local storage quota notice (database sync will proceed):', storageErr);
+  }
+  notifyParts(cachedParts, dbStatus.isConnected);
+
+  // Persist all to Firestore
+  try {
+    const promises = savedParts.map((p) => {
+      const partRef = doc(db, 'parts', p.id);
+      return setDoc(partRef, p, { merge: true });
+    });
+    await Promise.all(promises);
+    dbStatus.lastSyncTime = new Date().toLocaleTimeString();
+    dbStatus.partCount = parts.length;
+    notifyStatus();
+  } catch (err: any) {
+    console.error('Failed batch saving parts to Firestore:', err);
+    throw new Error(`Cloud Database Sync Note: ${err.message || 'Firestore batch write failed'}`);
+  }
+
+  return savedParts;
+};
+
+/**
  * Delete part from both Firestore and local state
  */
 export const deletePart = async (id: string): Promise<void> => {

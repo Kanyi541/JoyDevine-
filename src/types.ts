@@ -1,7 +1,7 @@
 export interface AutoPart {
   id: string;
   itemName: string;
-  ybNo: string;        // JoyDevine YB inventory numbering
+  ybNo: string;        // JoyDivine YB inventory numbering
   oem: string;         // OEM Part code
   des: string;         // Description & vehicle compatibility details
   category: string;

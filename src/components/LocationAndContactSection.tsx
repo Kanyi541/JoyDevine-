@@ -1,16 +1,25 @@
 import React from 'react';
 import { 
-  MapPin, 
-  Phone, 
+  GeoAltFill as MapPin, 
+  TelephoneFill as Phone, 
   Clock, 
-  MessageCircle, 
-  Navigation, 
+  Whatsapp as MessageCircle, 
+  Compass as Navigation, 
   Truck, 
   CreditCard,
-  Building2,
-  CheckCircle2,
-  ExternalLink
-} from 'lucide-react';
+  Building as Building2,
+  CheckCircleFill as CheckCircle2,
+  BoxArrowUpRight as ExternalLink
+} from 'react-bootstrap-icons';
+import { 
+  PRIMARY_WHATSAPP_PHONE, 
+  PRIMARY_PHONE_DISPLAY, 
+  PRIMARY_PHONE_TEL,
+  SECONDARY_PHONE_1_DISPLAY,
+  SECONDARY_PHONE_1_TEL,
+  SECONDARY_PHONE_2_DISPLAY,
+  SECONDARY_PHONE_2_TEL
+} from '../services/whatsappService';
 
 export const LocationAndContactSection: React.FC = () => {
   return (
@@ -21,13 +30,13 @@ export const LocationAndContactSection: React.FC = () => {
         <div className="text-center max-w-2xl mx-auto space-y-2">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-900 text-xs font-bold font-mono">
             <Building2 className="w-3.5 h-3.5 text-blue-700" />
-            <span>KIRINYAGA ROAD • NAIROBI CBD</span>
+            <span>KIRINYAGA CRESCENT • NAIROBI CBD</span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-black text-[#0A192F] font-['Chivo'] tracking-tight">
             PHYSICAL STORE & CONTACT INFO
           </h2>
           <p className="text-xs sm:text-sm text-slate-600">
-            Visit our counter at Room B13 on Kirinyaga Road, or get parts dispatched directly to your garage anywhere in Kenya.
+            Visit our counter at Room B13 in Kirinyaga Crescent, opposite Seventies Plaza, or get parts dispatched directly to your garage anywhere in Kenya.
           </p>
         </div>
 
@@ -49,23 +58,23 @@ export const LocationAndContactSection: React.FC = () => {
                   </span>
                 </div>
                 <p className="text-xs text-slate-600 leading-relaxed">
-                  <strong className="text-slate-900">Kirinyaga Road</strong>, near Kirinyaga Crescent<br />
-                  <span className="text-blue-800 font-semibold">Opposite Seventies Plaza</span><br />
+                  <strong className="text-slate-900">Kirinyaga Crescent</strong><br />
+                  <span className="text-blue-800 font-bold">Opposite Seventies Plaza</span><br />
                   Nairobi Central Business District, Kenya
                 </p>
               </div>
 
               <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs space-y-1">
-                <div className="font-bold text-slate-900">Landmarks for Drivers / Walkers:</div>
+                <div className="font-bold text-slate-900">Landmarks for Walkers & Drivers:</div>
                 <div className="text-slate-600 text-[11px]">
-                  Directly opposite Seventies Plaza, just past Kirinyaga Crescent junction. Look for the JoyDevine Room B13 blue signboard.
+                  Located in Kirinyaga Crescent, directly opposite Seventies Plaza. Look for Room B13 JoyDivine Auto Spares signboard.
                 </div>
               </div>
             </div>
 
             <div className="pt-3 border-t border-slate-100">
               <a
-                href="https://maps.google.com/?q=Kirinyaga+Road+Nairobi"
+                href="https://maps.google.com/?q=Kirinyaga+Crescent+Nairobi"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 hover:text-blue-900 transition-colors"
@@ -87,24 +96,62 @@ export const LocationAndContactSection: React.FC = () => {
               <div>
                 <h3 className="text-base font-bold text-[#0A192F] mb-1">Direct Counter Lines</h3>
                 <p className="text-xs text-slate-600 mb-3">
-                  Call our sales desk directly to verify vehicle compatibility or hold stock:
+                  Call or WhatsApp our sales desk directly to verify vehicle compatibility or hold stock:
                 </p>
 
                 <div className="space-y-2 text-xs font-mono">
                   <a
-                    href="tel:+254720357361"
-                    className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-900 border border-slate-200 transition-colors"
+                    href={`tel:${PRIMARY_PHONE_TEL}`}
+                    className="flex items-center justify-between p-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-slate-900 border border-emerald-300 transition-colors group"
+                    title={`Call Primary Hotline ${PRIMARY_PHONE_DISPLAY}`}
                   >
-                    <span className="text-slate-500 font-sans text-xs">Primary Hotline:</span>
-                    <strong className="font-bold text-blue-800 text-sm">0720 357 361</strong>
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                        <Phone className="w-3.5 h-3.5" />
+                      </div>
+                      <div>
+                        <span className="text-emerald-900 font-sans text-xs font-bold block">Primary Hotline & WhatsApp</span>
+                        <span className="text-emerald-700 font-sans text-[10px]">Instant Counter Response</span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <strong className="font-bold text-emerald-950 text-sm block">{PRIMARY_PHONE_DISPLAY}</strong>
+                      <span className="text-[10px] text-emerald-700 font-sans font-semibold group-hover:underline">Tap to Call</span>
+                    </div>
                   </a>
 
                   <a
-                    href="tel:+254722604419"
-                    className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-900 border border-slate-200 transition-colors"
+                    href={`tel:${SECONDARY_PHONE_1_TEL}`}
+                    className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-900 border border-slate-200 transition-colors group"
+                    title={`Call Secondary Line ${SECONDARY_PHONE_1_DISPLAY}`}
                   >
-                    <span className="text-slate-500 font-sans text-xs">Secondary Hotline:</span>
-                    <strong className="font-bold text-blue-800 text-sm">0722 604 419</strong>
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-900 flex items-center justify-center shrink-0">
+                        <Phone className="w-3 h-3 text-blue-700" />
+                      </div>
+                      <span className="text-slate-700 font-sans text-xs font-medium">Secondary Line:</span>
+                    </div>
+                    <div className="text-right">
+                      <strong className="font-bold text-blue-900 text-sm block">{SECONDARY_PHONE_1_DISPLAY}</strong>
+                      <span className="text-[10px] text-blue-600 font-sans group-hover:underline">Tap to Call</span>
+                    </div>
+                  </a>
+
+                  <a
+                    href={`tel:${SECONDARY_PHONE_2_TEL}`}
+                    className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-900 border border-slate-200 transition-colors group"
+                    title={`Call Sales Desk ${SECONDARY_PHONE_2_DISPLAY}`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-900 flex items-center justify-center shrink-0">
+                        <Phone className="w-3 h-3 text-blue-700" />
+                      </div>
+                      <span className="text-slate-700 font-sans text-xs font-medium">Counter Desk:</span>
+                    </div>
+                    <div className="text-right">
+                      <strong className="font-bold text-blue-900 text-sm block">{SECONDARY_PHONE_2_DISPLAY}</strong>
+                      <span className="text-[10px] text-blue-600 font-sans group-hover:underline">Tap to Call</span>
+                    </div>
                   </a>
                 </div>
               </div>
@@ -112,13 +159,13 @@ export const LocationAndContactSection: React.FC = () => {
 
             <div className="pt-3 border-t border-slate-100">
               <a
-                href="https://wa.me/254720357361?text=Hello%20JoyDevine%20Auto%20Spares,%20I%20am%20inquiring%20about%20a%20part"
+                href={`https://wa.me/${PRIMARY_WHATSAPP_PHONE}?text=${encodeURIComponent('Hello JoyDivine Auto Spares, I am inquiring about spare parts at Kirinyaga Crescent (opp. Seventies Plaza).')}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg flex items-center justify-center gap-1.5 transition-colors shadow-sm"
               >
                 <MessageCircle className="w-4 h-4" />
-                <span>Chat on WhatsApp (0720 357 361)</span>
+                <span>Chat on WhatsApp ({PRIMARY_PHONE_DISPLAY})</span>
               </a>
             </div>
           </div>

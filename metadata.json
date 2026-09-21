@@ -1,6 +1,6 @@
 {
-  "name": "JoyDevine Auto Spares",
-  "description": "JoyDevine Auto Spares located on Kirinyaga Road, Nairobi (Room B13 near Kirinyaga Crescent, opp. Seventies Plaza). Genuine wheel cylinders, master cylinders, brake hoses, cables, and automotive spare parts with inventory POS.",
+  "name": "JoyDivine Auto Spares",
+  "description": "JoyDivine Auto Spares located in Kirinyaga Crescent, opposite Seventies Plaza, Nairobi (Room B13). Genuine wheel cylinders, master cylinders, brake hoses, cables, and automotive spare parts with inventory POS.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

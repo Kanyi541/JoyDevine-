@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
 import { 
-  ShoppingCart, 
-  MessageCircle, 
+  Cart3 as ShoppingCart, 
+  Whatsapp as MessageCircle, 
   Copy, 
-  Check, 
+  CheckLg as Check, 
   Search, 
   Eye, 
-  CheckCircle2,
-  AlertTriangle,
-  Car,
-  Package
-} from 'lucide-react';
+  CheckCircleFill as CheckCircle2,
+  ExclamationTriangleFill as AlertTriangle,
+  CarFrontFill as Car,
+  BoxSeam as Package
+} from 'react-bootstrap-icons';
 import { AutoPart } from '../types';
-import { formatImageUrlForWhatsApp } from '../services/productImageService';
+import { buildWhatsAppPartOrderUrl } from '../services/whatsappService';
 
 interface CustomerCatalogProps {
   parts: AutoPart[];
@@ -180,10 +180,7 @@ export const CustomerCatalog: React.FC<CustomerCatalogProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5 sm:gap-5">
           {filteredParts.map((part) => {
             const isAdded = addedItemNotice === part.id;
-            const absolutePhotoUrl = formatImageUrlForWhatsApp(part.imageUrl);
-            const waLink = `https://wa.me/254720357361?text=${encodeURIComponent(
-              `Hello JoyDevine Auto Spares, I'm inquiring about:\n- Item: ${part.itemName}\n- YB No: ${part.ybNo}\n- OEM: ${part.oem}\n- Price: Ksh ${part.priceKes.toLocaleString()}\n- Product Photo: ${absolutePhotoUrl}\nIs this available in stock?`
-            )}`;
+            const waLink = buildWhatsAppPartOrderUrl(part);
 
             const isLowStock = part.stock < 5;
             const isOutOfStock = part.stock <= 0;

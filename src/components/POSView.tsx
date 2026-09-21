@@ -2,47 +2,51 @@ import React, { useState, useEffect } from 'react';
 import { 
   Lock, 
   Unlock, 
-  Plus, 
-  Package, 
-  ShoppingCart, 
-  FileText, 
-  CheckCircle2, 
-  Trash2, 
-  Edit3, 
+  PlusLg as Plus, 
+  BoxSeam as Package, 
+  Cart3 as ShoppingCart, 
+  FileEarmarkText as FileText, 
+  CheckCircleFill as CheckCircle2, 
+  Trash3 as Trash2, 
+  PencilSquare as Edit3, 
   Search, 
-  Sparkles, 
+  Stars as Sparkles, 
   Image as ImageIcon, 
   Printer, 
-  AlertTriangle, 
-  RefreshCw, 
+  ExclamationTriangleFill as AlertTriangle, 
+  ArrowRepeat as RefreshCw, 
   Key, 
-  DollarSign, 
-  LogOut,
-  X,
-  Layers,
-  ArrowRight,
-  Store,
-  CreditCard,
-  Warehouse,
-  Upload,
-  Folder,
-  Cloud,
-  Database,
-  FolderCheck,
-  Users,
-  User,
-  ShieldCheck,
-  Eye,
-  EyeOff,
-  TrendingUp,
-  Receipt,
-  UserCheck,
-  Camera
-} from 'lucide-react';
+  CurrencyDollar as DollarSign, 
+  BoxArrowRight as LogOut, 
+  XLg as X, 
+  Layers, 
+  ArrowRight, 
+  Shop as Store, 
+  CreditCard, 
+  Building as Warehouse, 
+  Upload, 
+  Folder, 
+  Cloud, 
+  Database, 
+  FolderCheck, 
+  People as Users, 
+  Person as User, 
+  ShieldCheck, 
+  Eye, 
+  EyeSlash as EyeOff, 
+  GraphUp as TrendingUp, 
+  Receipt, 
+  PersonCheck as UserCheck, 
+  Camera, 
+  Copy, 
+  CardChecklist as ListPlus, 
+  CheckLg as Check
+} from 'react-bootstrap-icons';
 import { AutoPart, POSSaleItem, POSSaleRecord, POSUser } from '../types';
 import { 
   getStoredParts, 
   savePart, 
+  batchSaveParts,
   deletePart, 
   updateStockLevel, 
   recordPOSSale, 
@@ -64,6 +68,7 @@ import {
 import { 
   uploadProductImage, 
   fetchAvailableProductImages, 
+  getCategoryDefaultImage,
   ProductImageItem 
 } from '../services/productImageService';
 import { 
@@ -75,7 +80,32 @@ import {
   updatePOSUser
 } from '../services/authService';
 import { POSUserManagement } from './POSUserManagement';
-import { JOYDEVINE_CATEGORIES } from '../data/joydevineParts';
+import { JOYDEVINE_CATEGORIES, CATEGORY_DEFAULT_IMAGES } from '../data/joydevineParts';
+import { PRIMARY_WHATSAPP_PHONE, PRIMARY_PHONE_DISPLAY, PRIMARY_PHONE_TEL } from '../services/whatsappService';
+
+export interface BatchProductRow {
+  rowId: string;
+  itemName: string;
+  ybNo: string;
+  oem: string;
+  des: string;
+  priceKes: number | '';
+  buyingPriceKes: number | '';
+  stock: number | '';
+  condition: 'Brand New' | 'OEM Replacement' | 'Heavy Duty';
+}
+
+const createEmptyBatchRow = (index: number, sampleDes = ''): BatchProductRow => ({
+  rowId: `row-${Date.now()}-${index}-${Math.floor(Math.random() * 1000)}`,
+  itemName: '',
+  ybNo: '',
+  oem: '',
+  des: sampleDes,
+  priceKes: 2800,
+  buyingPriceKes: 1800,
+  stock: 10,
+  condition: 'Brand New',
+});
 
 interface POSViewProps {
   onBackToShop: () => void;
@@ -101,6 +131,7 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
   const [deletingSaleId, setDeletingSaleId] = useState<string | null>(null);
 
   // Inventory / Stock Registration Form State
+  const [stockEntryMode, setStockEntryMode] = useState<'single' | 'batch'>('single');
   const [editingPartId, setEditingPartId] = useState<string | null>(null);
   const [itemName, setItemName] = useState('');
   const [ybNo, setYbNo] = useState('');
@@ -110,10 +141,20 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
   const [priceKes, setPriceKes] = useState<number | ''>(2800);
   const [buyingPriceKes, setBuyingPriceKes] = useState<number | ''>(1800);
   const [stock, setStock] = useState<number | ''>(10);
-  const [imageUrl, setImageUrl] = useState('');
+  const [imageUrl, setImageUrl] = useState<string>(() => getCategoryDefaultImage(JOYDEVINE_CATEGORIES[1]));
   const [condition, setCondition] = useState<'Brand New' | 'OEM Replacement' | 'Heavy Duty'>('Brand New');
   const [imageAutoDetected, setImageAutoDetected] = useState(false);
   const [showImageLibraryModal, setShowImageLibraryModal] = useState(false);
+
+  // Batch Multi-Product Entry State (Add more than one product of that category)
+  const [batchCategory, setBatchCategory] = useState<string>(JOYDEVINE_CATEGORIES[1]);
+  const [batchImageUrl, setBatchImageUrl] = useState<string>(() => getCategoryDefaultImage(JOYDEVINE_CATEGORIES[1]));
+  const [batchRows, setBatchRows] = useState<BatchProductRow[]>([
+    createEmptyBatchRow(1),
+    createEmptyBatchRow(2),
+  ]);
+  const [isSavingBatch, setIsSavingBatch] = useState(false);
+  const [batchFeedback, setBatchFeedback] = useState<string | null>(null);
 
   // Live Parts & Search
   const [parts, setParts] = useState<AutoPart[]>(getStoredParts());
@@ -352,6 +393,22 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Category selection handler with automatic category image assignment
+  const handleCategoryChange = (newCat: string) => {
+    setCategory(newCat);
+    // If current image is empty, or is any category preset image, auto-assign the new category photo
+    const isPresetOrEmpty = !imageUrl || Object.values(CATEGORY_DEFAULT_IMAGES).includes(imageUrl) || imageAutoDetected;
+    if (isPresetOrEmpty) {
+      setImageUrl(getCategoryDefaultImage(newCat));
+      setImageAutoDetected(false);
+    }
+  };
+
+  const handleBatchCategoryChange = (newCat: string) => {
+    setBatchCategory(newCat);
+    setBatchImageUrl(getCategoryDefaultImage(newCat));
+  };
+
   // Reset form
   const handleResetForm = () => {
     setEditingPartId(null);
@@ -363,20 +420,20 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
     setPriceKes(2800);
     setBuyingPriceKes(1800);
     setStock(10);
-    setImageUrl('');
+    setImageUrl(getCategoryDefaultImage(JOYDEVINE_CATEGORIES[1]));
     setCondition('Brand New');
     setImageAutoDetected(false);
   };
 
-  // Save/Update Part
+  // Save/Update Part (Single)
   const handleSavePart = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!itemName || !ybNo || !oem || !des.trim() || priceKes === '') {
+    if (!itemName.trim() || !ybNo.trim() || !oem.trim() || !des.trim() || priceKes === '') {
       alert('Please fill all mandatory fields: Item Name, YB No, OEM, Product Description (DES), and Selling Price.');
       return;
     }
 
-    const fallbackImg = imageUrl || 'https://images.unsplash.com/photo-1600790142055-619df03207e6?auto=format&fit=crop&w=800&q=80';
+    const assignedImg = imageUrl || getCategoryDefaultImage(category);
 
     try {
       await savePart({
@@ -386,20 +443,149 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
         oem: oem.trim().toUpperCase(),
         des: des.trim(),
         category,
-        brand: 'JoyDevine / OEM',
+        brand: 'JoyDivine / OEM',
         priceKes: Number(priceKes),
         buyingPriceKes: buyingPriceKes !== '' ? Number(buyingPriceKes) : undefined,
         stock: stock !== '' ? Number(stock) : 0,
-        imageUrl: fallbackImg,
+        imageUrl: assignedImg,
         condition,
         warrantyMonths: 12,
       });
 
       handleResetForm();
       refreshPartsList();
-      alert(editingPartId ? 'Stock updated successfully in Cloud Firestore!' : 'New auto part & photo registered directly into Room B13 database!');
+      onCatalogUpdated();
+      alert(editingPartId ? 'Stock updated successfully in Cloud Firestore!' : 'New auto part registered directly into Room B13 database!');
     } catch (err: any) {
       alert('Database error while saving part: ' + (err.message || 'Check Firestore connection'));
+    }
+  };
+
+  // Save current item and prepare form immediately for the next product in the SAME category
+  const handleSaveAndAddNextInCategory = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!itemName.trim() || !ybNo.trim() || !oem.trim() || !des.trim() || priceKes === '') {
+      alert('Please fill all mandatory fields: Item Name, YB No, OEM, Product Description (DES), and Selling Price.');
+      return;
+    }
+
+    const assignedImg = imageUrl || getCategoryDefaultImage(category);
+
+    try {
+      const saved = await savePart({
+        id: editingPartId || undefined,
+        itemName: itemName.trim(),
+        ybNo: ybNo.trim().toUpperCase(),
+        oem: oem.trim().toUpperCase(),
+        des: des.trim(),
+        category,
+        brand: 'JoyDivine / OEM',
+        priceKes: Number(priceKes),
+        buyingPriceKes: buyingPriceKes !== '' ? Number(buyingPriceKes) : undefined,
+        stock: stock !== '' ? Number(stock) : 0,
+        imageUrl: assignedImg,
+        condition,
+        warrantyMonths: 12,
+      });
+
+      refreshPartsList();
+      onCatalogUpdated();
+
+      // Keep category, condition, and image intact; clear item specific fields
+      setEditingPartId(null);
+      setItemName('');
+      setYbNo('');
+      setOem('');
+      setDes('');
+      setStock(10);
+      setUploadSuccessMsg(`✓ Saved "${saved.itemName}" to Firestore! Ready for next ${category} product (category photo kept).`);
+      setTimeout(() => setUploadSuccessMsg(null), 6000);
+    } catch (err: any) {
+      alert('Database error while saving part: ' + (err.message || 'Check Firestore connection'));
+    }
+  };
+
+  // Batch Multi-Product Row Management
+  const handleAddBatchRow = () => {
+    setBatchRows(prev => [...prev, createEmptyBatchRow(prev.length + 1)]);
+  };
+
+  const handleDuplicateBatchRow = (index: number) => {
+    setBatchRows(prev => {
+      const target = prev[index];
+      if (!target) return prev;
+      const clone: BatchProductRow = {
+        ...target,
+        rowId: `row-${Date.now()}-${prev.length + 1}-${Math.floor(Math.random() * 1000)}`,
+        itemName: target.itemName ? `${target.itemName} (Copy)` : '',
+      };
+      const next = [...prev];
+      next.splice(index + 1, 0, clone);
+      return next;
+    });
+  };
+
+  const handleRemoveBatchRow = (index: number) => {
+    setBatchRows(prev => {
+      if (prev.length <= 1) return [createEmptyBatchRow(1)];
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+
+  const handleBatchRowChange = (index: number, field: keyof BatchProductRow, value: any) => {
+    setBatchRows(prev => {
+      const next = [...prev];
+      if (next[index]) {
+        next[index] = { ...next[index], [field]: value };
+      }
+      return next;
+    });
+  };
+
+  // Save all items in the batch to Firestore & shelf stock
+  const handleSaveBatch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const validRows = batchRows.filter(r => r.itemName.trim() && r.ybNo.trim() && r.priceKes !== '');
+    if (validRows.length === 0) {
+      alert('Please fill in at least one product with Item Name, YB No, and Selling Price.');
+      return;
+    }
+
+    setIsSavingBatch(true);
+    setBatchFeedback(null);
+
+    const categoryImg = batchImageUrl || getCategoryDefaultImage(batchCategory);
+
+    try {
+      const partsToSave = validRows.map(r => ({
+        itemName: r.itemName.trim(),
+        ybNo: r.ybNo.trim().toUpperCase(),
+        oem: r.oem.trim().toUpperCase() || r.ybNo.trim().toUpperCase(),
+        des: r.des.trim() || `${r.itemName.trim()}. Category: ${batchCategory}. Genuine JoyDivine Auto Spares Kirinyaga Crescent.`,
+        category: batchCategory,
+        brand: 'JoyDivine / OEM',
+        priceKes: Number(r.priceKes),
+        buyingPriceKes: r.buyingPriceKes !== '' ? Number(r.buyingPriceKes) : undefined,
+        stock: r.stock !== '' ? Number(r.stock) : 0,
+        imageUrl: categoryImg,
+        condition: r.condition,
+        warrantyMonths: 12,
+      }));
+
+      const saved = await batchSaveParts(partsToSave);
+      refreshPartsList();
+      onCatalogUpdated();
+      setBatchFeedback(`✅ Successfully registered all ${saved.length} products to "${batchCategory}" with category photo!`);
+      // Reset rows with 2 blank rows
+      setBatchRows([
+        createEmptyBatchRow(1),
+        createEmptyBatchRow(2),
+      ]);
+      setTimeout(() => setBatchFeedback(null), 7000);
+    } catch (err: any) {
+      alert('Error saving batch products: ' + (err.message || 'Check Firestore connection'));
+    } finally {
+      setIsSavingBatch(false);
     }
   };
 
@@ -548,10 +734,10 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
               <ShieldCheck className="w-7 h-7 text-blue-400" />
             </div>
             <h2 className="text-xl font-black text-[#0A192F] font-['Chivo'] uppercase tracking-tight">
-              JOYDEVINE COUNTER POS
+              JOYDIVINE COUNTER POS
             </h2>
             <p className="text-xs text-slate-500">
-              Room B13, Kirinyaga Road, Nairobi • Restricted Staff & Admin Portal
+              Room B13, Kirinyaga Crescent, Opp. Seventies Plaza, Nairobi • Restricted Staff & Admin Portal
             </p>
           </div>
 
@@ -684,7 +870,7 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                 </span>
               </div>
               <p className="text-[11px] text-slate-400">
-                Kirinyaga Road, Nairobi CBD • Counter Cashier Terminal
+                Kirinyaga Crescent, Opp. Seventies Plaza (Room B13) • Counter Cashier Terminal
               </p>
             </div>
           </div>
@@ -1128,407 +1314,693 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
 
             <div className={isAdmin ? "grid grid-cols-1 lg:grid-cols-12 gap-6" : "w-full"}>
               
-              {/* Left: Registration Form (7 Cols) - Only visible to Admin */}
+              {/* Left: Registration Form (7 or 8 Cols) - Only visible to Admin */}
               {isAdmin && (
-                <div className="lg:col-span-7 bg-white border border-slate-200 rounded-xl p-5 sm:p-6 shadow-sm space-y-5">
+                <div className={`${stockEntryMode === 'batch' ? 'lg:col-span-8' : 'lg:col-span-7'} bg-white border border-slate-200 rounded-xl p-5 sm:p-6 shadow-sm space-y-5`}>
               
               <div className="flex items-center justify-between pb-3 border-b border-slate-200">
                 <div>
                   <h3 className="font-black text-base text-[#0A192F] font-['Chivo'] tracking-tight">
-                    {editingPartId ? 'EDIT INVENTORY ITEM' : 'REGISTER NEW STOCK'}
+                    {editingPartId ? 'EDIT INVENTORY ITEM' : 'STOCK INVENTORY REGISTRATION'}
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Inventory numbering: YB No, OEM Code, and Description (DES)
+                    Room B13 Kirinyaga Crescent • Cloud Firestore Synced Catalog
                   </p>
                 </div>
 
-                {editingPartId && (
+                {editingPartId ? (
                   <button
                     onClick={handleResetForm}
                     className="text-xs text-rose-600 hover:underline font-bold"
                   >
                     Cancel Editing
                   </button>
+                ) : (
+                  <div className="text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full font-bold flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Auto Category Photos</span>
+                  </div>
                 )}
               </div>
 
-              {/* Automatic Image Reflection Notice Banner */}
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-900 flex items-start gap-2.5">
-                <Sparkles className="w-4 h-4 text-blue-700 shrink-0 mt-0.5" />
-                <div>
-                  <strong className="font-bold block text-blue-950">Auto-Image Reflection Active:</strong>
-                  <span>
-                    Typing an existing <strong>YB No</strong>, <strong>OEM Code</strong>, or <strong>Item Name</strong> automatically recalls and attaches the photo you registered previously so you never have to re-upload it.
-                  </span>
-                </div>
-              </div>
-
-              <form onSubmit={handleSavePart} className="space-y-4">
-                
-                {/* Item Name */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Item Name *
-                  </label>
-                  <input
-                    type="text"
-                    value={itemName}
-                    onChange={(e) => handleItemNameChange(e.target.value)}
-                    placeholder="e.g. Brake Wheel Cylinder Assembly Rear RH"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-blue-700"
-                    required
-                  />
-                </div>
-
-                {/* YB No and OEM Code (2 Columns) */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      YB No (JoyDevine Inventory Code) *
-                    </label>
-                    <input
-                      type="text"
-                      value={ybNo}
-                      onChange={(e) => handleYbNoChange(e.target.value)}
-                      placeholder="e.g. YB-47550"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-900 uppercase focus:bg-white focus:outline-none focus:border-blue-700"
-                      required
-                    />
-                    <span className="text-[10px] text-slate-500 font-mono mt-0.5 block">
-                      Internal shop tag
-                    </span>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      OEM Code *
-                    </label>
-                    <input
-                      type="text"
-                      value={oem}
-                      onChange={(e) => handleOemChange(e.target.value)}
-                      placeholder="e.g. 47550-0K010"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-900 uppercase focus:bg-white focus:outline-none focus:border-blue-700"
-                      required
-                    />
-                    <span className="text-[10px] text-slate-500 font-mono mt-0.5 block">
-                      Original manufacturer number
-                    </span>
-                  </div>
-                </div>
-
-                {/* DES: Product Description & Vehicle Compatibility */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs font-bold text-slate-700">
-                      Product Description & Compatibility (DES) *
-                    </label>
-                    <span className="text-[10px] text-blue-700 font-bold font-mono">
-                      Shown on website & catalog
-                    </span>
-                  </div>
-                  <textarea
-                    value={des}
-                    onChange={(e) => setDes(e.target.value)}
-                    rows={3}
-                    placeholder="e.g. Fits Toyota Hilux KUN25/KUN26 (2005-2016), Fortuner, HiAce KDH200. Dual piston hydraulic rear wheel brake cylinder complete with bleeder screw."
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-blue-700"
-                    required
-                  />
-                  <span className="text-[10px] text-slate-500 mt-0.5 block">
-                    This description is stored with the product in the database and shown with the product image on the customer shop.
-                  </span>
-                </div>
-
-                {/* Category & Condition */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Category
-                    </label>
-                    <select
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-blue-700"
-                    >
-                      {JOYDEVINE_CATEGORIES.filter((c) => c !== 'All Parts').map((cat) => (
-                        <option key={cat} value={cat}>
-                          {cat}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Condition
-                    </label>
-                    <select
-                      value={condition}
-                      onChange={(e) => setCondition(e.target.value as any)}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-blue-700"
-                    >
-                      <option value="Brand New">Brand New</option>
-                      <option value="OEM Replacement">OEM Replacement</option>
-                      <option value="Heavy Duty">Heavy Duty</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Pricing & Stock (3 Columns) */}
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Selling Price (KES) *
-                    </label>
-                    <input
-                      type="number"
-                      value={priceKes}
-                      onChange={(e) => setPriceKes(e.target.value ? Number(e.target.value) : '')}
-                      placeholder="2800"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-mono font-bold text-blue-950 focus:bg-white focus:outline-none focus:border-blue-700"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Cost / Buying Price (KES)
-                    </label>
-                    <input
-                      type="number"
-                      value={buyingPriceKes}
-                      onChange={(e) => setBuyingPriceKes(e.target.value ? Number(e.target.value) : '')}
-                      placeholder="1800"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-mono text-slate-700 focus:bg-white focus:outline-none focus:border-blue-700"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Current Stock (Room B13)
-                    </label>
-                    <input
-                      type="number"
-                      value={stock}
-                      onChange={(e) => setStock(e.target.value ? Number(e.target.value) : '')}
-                      placeholder="10"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-900 focus:bg-white focus:outline-none focus:border-blue-700"
-                    />
-                  </div>
-                </div>
-
-                {/* Product Image: Direct Database File Sync (No image URL required) */}
-                <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-[#0A192F] flex items-center gap-1.5">
-                      <Database className="w-3.5 h-3.5 text-blue-700" />
-                      <span>Product Photo (Syncs Directly to Cloud Database)</span>
-                    </label>
-                    <span className="text-[10px] text-slate-500 font-medium">No image URL needed</span>
-                  </div>
-
-                  {/* Drag-and-drop / File upload zone */}
-                  <div
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      setIsDraggingOver(true);
-                    }}
-                    onDragLeave={() => setIsDraggingOver(false)}
-                    onDrop={handleImageDrop}
-                    className={`border-2 border-dashed rounded-lg p-3 transition-colors text-center ${
-                      isDraggingOver
-                        ? 'border-blue-600 bg-blue-50/70'
-                        : imageUrl
-                        ? 'border-slate-200 bg-white'
-                        : 'border-slate-300 bg-white hover:border-blue-400'
+              {/* Mode Switcher: Single Item Entry vs Batch Multi-Product Entry */}
+              {!editingPartId && (
+                <div className="p-1 bg-slate-100 rounded-xl flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setStockEntryMode('single')}
+                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                      stockEntryMode === 'single'
+                        ? 'bg-white text-[#0A192F] shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    {imageUrl ? (
-                      <div className="flex items-center gap-3 text-left">
-                        <div className="w-16 h-16 bg-slate-100 rounded-lg border border-slate-200 p-1 flex items-center justify-center shrink-0 overflow-hidden">
+                    <Package className="w-4 h-4 text-blue-700" />
+                    <span>Single Product Entry</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setStockEntryMode('batch')}
+                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                      stockEntryMode === 'batch'
+                        ? 'bg-[#0A192F] text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Layers className="w-4 h-4 text-emerald-400" />
+                    <span>Batch Entry (Multiple of Same Category)</span>
+                    <span className="px-1.5 py-0.2 bg-emerald-500 text-white text-[10px] rounded-full uppercase font-bold">Fast</span>
+                  </button>
+                </div>
+              )}
+
+              {/* BATCH MODE: Add multiple products of the same category with shared photo */}
+              {stockEntryMode === 'batch' && !editingPartId ? (
+                <div className="space-y-4">
+                  {/* Category Selection & Shared Image Banner */}
+                  <div className="p-4 bg-blue-50/60 border border-blue-200 rounded-xl space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="space-y-1">
+                        <label className="block text-xs font-black text-[#0A192F] uppercase tracking-wider">
+                          1. Select Category for this Batch of Stock:
+                        </label>
+                        <select
+                          value={batchCategory}
+                          onChange={(e) => handleBatchCategoryChange(e.target.value)}
+                          className="px-3 py-2 bg-white border border-blue-300 rounded-lg text-xs font-bold text-[#0A192F] focus:outline-none focus:border-blue-700 w-full sm:w-auto min-w-[240px]"
+                        >
+                          {JOYDEVINE_CATEGORIES.filter((c) => c !== 'All Parts').map((cat) => (
+                            <option key={cat} value={cat}>
+                              {cat}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Shared Photo Preview */}
+                      <div className="flex items-center gap-3 bg-white p-2.5 rounded-lg border border-blue-200 shadow-xs">
+                        <div className="w-14 h-14 bg-slate-50 rounded border border-slate-200 p-1 shrink-0 flex items-center justify-center overflow-hidden">
                           <img
-                            src={imageUrl}
-                            alt="Selected"
+                            src={batchImageUrl}
+                            alt={batchCategory}
                             className="max-h-full max-w-full object-contain"
                             onError={(e) => {
                               (e.currentTarget as HTMLImageElement).src = '/productsimg/placeholder.svg';
                             }}
                           />
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            {imageUrl.startsWith('data:image/') ? (
-                              <span className="text-[10px] font-mono font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded flex items-center gap-1">
-                                <Database className="w-3 h-3 text-emerald-700" />
-                                <span>STORED DIRECTLY IN FIRESTORE</span>
-                              </span>
-                            ) : imageUrl.startsWith('/productsimg/') ? (
-                              <span className="text-[10px] font-mono font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded flex items-center gap-1">
-                                <Folder className="w-3 h-3 text-blue-700" />
-                                <span>LOCAL BUNDLE (/productsimg/)</span>
-                              </span>
-                            ) : (
-                              <span className="text-[10px] font-mono font-bold bg-slate-200 text-slate-800 px-2 py-0.5 rounded">
-                                WEB LINK
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[11px] text-slate-600 mt-1 leading-snug">
-                            {imageUrl.startsWith('data:image/')
-                              ? 'Embedded directly into cloud database. Displays immediately on POS and website.'
-                              : imageUrl.startsWith('/productsimg/')
-                              ? 'Referenced from catalog public image library.'
-                              : 'Linked from external URL.'}
+                        <div className="text-[11px] space-y-0.5">
+                          <span className="font-bold text-emerald-800 flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Shared Category Photo</span>
+                          </span>
+                          <p className="text-slate-500 text-[10px] leading-tight">
+                            Automatically applied to all {batchRows.length} items below. No need to add photos individually!
                           </p>
-                          <div className="flex items-center gap-3 mt-1.5">
-                            <label
-                              htmlFor="pos-product-image-upload-replace"
-                              className="text-[11px] font-bold text-blue-700 hover:text-blue-900 cursor-pointer hover:underline flex items-center gap-1"
-                            >
-                              <Upload className="w-3 h-3" />
-                              <span>Replace photo</span>
+                          <label
+                            htmlFor="pos-batch-image-replace"
+                            className="text-[10px] text-blue-700 font-bold hover:underline cursor-pointer flex items-center gap-1 pt-0.5"
+                          >
+                            <Upload className="w-2.5 h-2.5" />
+                            <span>Custom photo for batch</span>
+                          </label>
+                          <input
+                            id="pos-batch-image-replace"
+                            type="file"
+                            accept="image/*"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              try {
+                                const res = await uploadProductImage(file);
+                                setBatchImageUrl(res.url);
+                              } catch (err: any) {
+                                alert('Image upload failed: ' + err.message);
+                              }
+                            }}
+                            className="hidden"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Multi-Product Rows */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-xs font-black text-[#0A192F] uppercase tracking-wider">
+                          2. Products in this Category ({batchRows.length} items)
+                        </span>
+                        <p className="text-[11px] text-slate-500">
+                          Add multiple stock items at once. Duplicate similar items (e.g. RH & LH) with one click!
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleAddBatchRow}
+                        className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add Product Row</span>
+                      </button>
+                    </div>
+
+                    {/* Scrollable list of rows */}
+                    <div className="space-y-3 max-h-[580px] overflow-y-auto pr-1">
+                      {batchRows.map((row, idx) => (
+                        <div
+                          key={row.rowId}
+                          className="p-3.5 bg-slate-50 hover:bg-slate-100/70 border border-slate-200 rounded-xl space-y-3 transition-colors"
+                        >
+                          <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                            <span className="text-xs font-black text-slate-700 flex items-center gap-1.5 font-mono">
+                              <span className="w-5 h-5 rounded-full bg-[#0A192F] text-white flex items-center justify-center text-[11px] font-bold">
+                                {idx + 1}
+                              </span>
+                              <span>Product #{idx + 1}</span>
+                            </span>
+
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleDuplicateBatchRow(idx)}
+                                className="px-2 py-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-[11px] font-bold rounded flex items-center gap-1 cursor-pointer shadow-2xs"
+                                title="Duplicate this row (useful for LH/RH variants)"
+                              >
+                                <Copy className="w-3 h-3 text-blue-600" />
+                                <span>Duplicate</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveBatchRow(idx)}
+                                disabled={batchRows.length <= 1}
+                                className="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded disabled:opacity-30 cursor-pointer"
+                                title="Remove row"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                            <div className="sm:col-span-2">
+                              <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">
+                                Item Name *
+                              </label>
+                              <input
+                                type="text"
+                                value={row.itemName}
+                                onChange={(e) => handleBatchRowChange(idx, 'itemName', e.target.value)}
+                                placeholder="e.g. Brake Wheel Cylinder Rear RH"
+                                className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs text-slate-900 focus:outline-none focus:border-blue-700"
+                                required
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">
+                                YB No (Internal Code) *
+                              </label>
+                              <input
+                                type="text"
+                                value={row.ybNo}
+                                onChange={(e) => handleBatchRowChange(idx, 'ybNo', e.target.value.toUpperCase())}
+                                placeholder="e.g. YB-47550"
+                                className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs font-mono font-bold text-slate-900 uppercase focus:outline-none focus:border-blue-700"
+                                required
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">
+                                OEM Code
+                              </label>
+                              <input
+                                type="text"
+                                value={row.oem}
+                                onChange={(e) => handleBatchRowChange(idx, 'oem', e.target.value.toUpperCase())}
+                                placeholder="e.g. 47550-0K010"
+                                className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs font-mono text-slate-900 uppercase focus:outline-none focus:border-blue-700"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">
+                                Selling Price (KES) *
+                              </label>
+                              <input
+                                type="number"
+                                value={row.priceKes}
+                                onChange={(e) => handleBatchRowChange(idx, 'priceKes', e.target.value ? Number(e.target.value) : '')}
+                                placeholder="2800"
+                                className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs font-mono font-bold text-blue-950 focus:outline-none focus:border-blue-700"
+                                required
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">
+                                Cost Price (KES)
+                              </label>
+                              <input
+                                type="number"
+                                value={row.buyingPriceKes}
+                                onChange={(e) => handleBatchRowChange(idx, 'buyingPriceKes', e.target.value ? Number(e.target.value) : '')}
+                                placeholder="1800"
+                                className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs font-mono text-slate-700 focus:outline-none focus:border-blue-700"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">
+                                Stock (Room B13)
+                              </label>
+                              <input
+                                type="number"
+                                value={row.stock}
+                                onChange={(e) => handleBatchRowChange(idx, 'stock', e.target.value ? Number(e.target.value) : '')}
+                                placeholder="10"
+                                className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-700"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">
+                              Description / Vehicle Compatibility (DES)
                             </label>
                             <input
-                              id="pos-product-image-upload-replace"
+                              type="text"
+                              value={row.des}
+                              onChange={(e) => handleBatchRowChange(idx, 'des', e.target.value)}
+                              placeholder="e.g. Fits Toyota Hilux Vigo 2.5/3.0 D4D, Fortuner. Complete hydraulic assembly."
+                              className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs text-slate-900 focus:outline-none focus:border-blue-700"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="pt-2 flex flex-wrap items-center justify-between gap-3">
+                      <button
+                        type="button"
+                        onClick={handleAddBatchRow}
+                        className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-lg flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>+ Add Another Product Row</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleSaveBatch}
+                        disabled={isSavingBatch}
+                        className={`px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg shadow-sm flex items-center gap-2 cursor-pointer ${
+                          isSavingBatch ? 'opacity-50 cursor-wait' : ''
+                        }`}
+                      >
+                        <Check className="w-4 h-4" />
+                        <span>{isSavingBatch ? 'Saving Batch to Firestore...' : `Save All ${batchRows.filter(r => r.itemName.trim() && r.ybNo.trim()).length || batchRows.length} Products to Room B13`}</span>
+                      </button>
+                    </div>
+
+                    {batchFeedback && (
+                      <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl text-xs font-bold text-emerald-900 flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>{batchFeedback}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                /* SINGLE PRODUCT ENTRY FORM */
+                <form onSubmit={handleSavePart} className="space-y-4">
+                  
+                  {/* Category & Condition First */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-bold text-slate-700">
+                          Category *
+                        </label>
+                        <span className="text-[10px] text-emerald-700 font-bold">
+                          Auto photo assigned
+                        </span>
+                      </div>
+                      <select
+                        value={category}
+                        onChange={(e) => handleCategoryChange(e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:border-blue-700"
+                      >
+                        {JOYDEVINE_CATEGORIES.filter((c) => c !== 'All Parts').map((cat) => (
+                          <option key={cat} value={cat}>
+                            {cat}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Condition
+                      </label>
+                      <select
+                        value={condition}
+                        onChange={(e) => setCondition(e.target.value as any)}
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-blue-700"
+                      >
+                        <option value="Brand New">Brand New</option>
+                        <option value="OEM Replacement">OEM Replacement</option>
+                        <option value="Heavy Duty">Heavy Duty</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Item Name */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Item Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={itemName}
+                      onChange={(e) => handleItemNameChange(e.target.value)}
+                      placeholder="e.g. Brake Wheel Cylinder Assembly Rear RH"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-blue-700"
+                      required
+                    />
+                  </div>
+
+                  {/* YB No and OEM Code (2 Columns) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        YB No (JoyDivine Inventory Code) *
+                      </label>
+                      <input
+                        type="text"
+                        value={ybNo}
+                        onChange={(e) => handleYbNoChange(e.target.value)}
+                        placeholder="e.g. YB-47550"
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-900 uppercase focus:bg-white focus:outline-none focus:border-blue-700"
+                        required
+                      />
+                      <span className="text-[10px] text-slate-500 font-mono mt-0.5 block">
+                        Internal shop tag
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        OEM Code *
+                      </label>
+                      <input
+                        type="text"
+                        value={oem}
+                        onChange={(e) => handleOemChange(e.target.value)}
+                        placeholder="e.g. 47550-0K010"
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-900 uppercase focus:outline-none focus:border-blue-700"
+                        required
+                      />
+                      <span className="text-[10px] text-slate-500 font-mono mt-0.5 block">
+                        Original manufacturer number
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* DES: Product Description & Vehicle Compatibility */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-bold text-slate-700">
+                        Product Description & Compatibility (DES) *
+                      </label>
+                      <span className="text-[10px] text-blue-700 font-bold font-mono">
+                        Shown on website & catalog
+                      </span>
+                    </div>
+                    <textarea
+                      value={des}
+                      onChange={(e) => setDes(e.target.value)}
+                      rows={3}
+                      placeholder="e.g. Fits Toyota Hilux KUN25/KUN26 (2005-2016), Fortuner, HiAce KDH200. Dual piston hydraulic rear wheel brake cylinder complete with bleeder screw."
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-blue-700"
+                      required
+                    />
+                    <span className="text-[10px] text-slate-500 mt-0.5 block">
+                      This description is stored with the product in the database and shown with the product image on the customer shop.
+                    </span>
+                  </div>
+
+                  {/* Pricing & Stock (3 Columns) */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Selling Price (KES) *
+                      </label>
+                      <input
+                        type="number"
+                        value={priceKes}
+                        onChange={(e) => setPriceKes(e.target.value ? Number(e.target.value) : '')}
+                        placeholder="2800"
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-mono font-bold text-blue-950 focus:bg-white focus:outline-none focus:border-blue-700"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Cost / Buying Price (KES)
+                      </label>
+                      <input
+                        type="number"
+                        value={buyingPriceKes}
+                        onChange={(e) => setBuyingPriceKes(e.target.value ? Number(e.target.value) : '')}
+                        placeholder="1800"
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-mono text-slate-700 focus:bg-white focus:outline-none focus:border-blue-700"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Current Stock (Room B13)
+                      </label>
+                      <input
+                        type="number"
+                        value={stock}
+                        onChange={(e) => setStock(e.target.value ? Number(e.target.value) : '')}
+                        placeholder="10"
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-900 focus:bg-white focus:outline-none focus:border-blue-700"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Product Image: Direct Database File Sync with Category Auto-Default */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-[#0A192F] flex items-center gap-1.5">
+                        <Database className="w-3.5 h-3.5 text-blue-700" />
+                        <span>Product Photo (Auto-Assigned from Category)</span>
+                      </label>
+                      <span className="text-[10px] text-emerald-700 font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                        <span>No image upload required</span>
+                      </span>
+                    </div>
+
+                    {/* Image display with category badge */}
+                    <div
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setIsDraggingOver(true);
+                      }}
+                      onDragLeave={() => setIsDraggingOver(false)}
+                      onDrop={handleImageDrop}
+                      className={`border-2 border-dashed rounded-lg p-3 transition-colors text-center ${
+                        isDraggingOver
+                          ? 'border-blue-600 bg-blue-50/70'
+                          : imageUrl
+                          ? 'border-slate-200 bg-white'
+                          : 'border-slate-300 bg-white hover:border-blue-400'
+                      }`}
+                    >
+                      {imageUrl ? (
+                        <div className="flex items-center gap-3 text-left">
+                          <div className="w-16 h-16 bg-slate-100 rounded-lg border border-slate-200 p-1 flex items-center justify-center shrink-0 overflow-hidden">
+                            <img
+                              src={imageUrl}
+                              alt="Selected"
+                              className="max-h-full max-w-full object-contain"
+                              onError={(e) => {
+                                (e.currentTarget as HTMLImageElement).src = '/productsimg/placeholder.svg';
+                              }}
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {imageUrl.startsWith('data:image/') ? (
+                                <span className="text-[10px] font-mono font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded flex items-center gap-1">
+                                  <Database className="w-3 h-3 text-emerald-700" />
+                                  <span>STORED DIRECTLY IN FIRESTORE</span>
+                                </span>
+                              ) : imageUrl.startsWith('/productsimg/') ? (
+                                <span className="text-[10px] font-mono font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded flex items-center gap-1">
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                  <span>CATEGORY PHOTO AUTO-ASSIGNED ({category})</span>
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-mono font-bold bg-slate-200 text-slate-800 px-2 py-0.5 rounded">
+                                  WEB LINK
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-slate-600 mt-1 leading-snug">
+                              {imageUrl.startsWith('data:image/')
+                                ? 'Embedded directly into cloud database. Displays immediately on POS and website.'
+                                : imageUrl.startsWith('/productsimg/')
+                                ? `Standard catalog image for ${category}. You do not have to upload anything!`
+                                : 'Linked from external URL.'}
+                            </p>
+                            <div className="flex items-center gap-3 mt-1.5">
+                              <label
+                                htmlFor="pos-product-image-upload-replace"
+                                className="text-[11px] font-bold text-blue-700 hover:text-blue-900 cursor-pointer hover:underline flex items-center gap-1"
+                              >
+                                <Upload className="w-3 h-3" />
+                                <span>Change custom photo</span>
+                              </label>
+                              <input
+                                id="pos-product-image-upload-replace"
+                                type="file"
+                                accept="image/*"
+                                onChange={handleImageFileUpload}
+                                disabled={isUploadingImage}
+                                className="hidden"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setImageUrl(getCategoryDefaultImage(category))}
+                                className="text-[11px] font-bold text-slate-500 hover:text-slate-700 cursor-pointer hover:underline"
+                              >
+                                Reset to Category Default
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-2 py-2">
+                          <div className="flex items-center justify-center gap-2">
+                            <label
+                              htmlFor="pos-product-image-upload"
+                              className={`px-3.5 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors ${
+                                isUploadingImage ? 'opacity-50 cursor-wait' : ''
+                              }`}
+                            >
+                              <Upload className="w-3.5 h-3.5" />
+                              <span>{isUploadingImage ? 'Optimizing photo...' : 'Choose File from Device'}</span>
+                            </label>
+                            <input
+                              id="pos-product-image-upload"
                               type="file"
                               accept="image/*"
                               onChange={handleImageFileUpload}
                               disabled={isUploadingImage}
                               className="hidden"
                             />
+
+                            <label
+                              htmlFor="pos-product-camera-snap"
+                              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+                              title="Take photo with camera"
+                            >
+                              <Camera className="w-3.5 h-3.5" />
+                              <span>Take Photo</span>
+                            </label>
+                            <input
+                              id="pos-product-camera-snap"
+                              type="file"
+                              accept="image/*"
+                              capture="environment"
+                              onChange={handleImageFileUpload}
+                              disabled={isUploadingImage}
+                              className="hidden"
+                            />
+
                             <button
                               type="button"
-                              onClick={() => setImageUrl('')}
-                              className="text-[11px] font-bold text-rose-600 hover:text-rose-800 cursor-pointer hover:underline"
+                              onClick={() => setShowImageLibraryModal(true)}
+                              className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
                             >
-                              Remove
+                              <ImageIcon className="w-3.5 h-3.5" />
+                              <span>Library ({availableImages.length})</span>
                             </button>
                           </div>
+
+                          <p className="text-[11px] text-slate-500">
+                            Or drag & drop photo file directly here (JPG, PNG, WebP)
+                          </p>
                         </div>
+                      )}
+                    </div>
+
+                    {uploadSuccessMsg && (
+                      <div className="p-2.5 bg-emerald-50 border border-emerald-300 rounded text-xs text-emerald-900 font-bold flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>{uploadSuccessMsg}</span>
                       </div>
-                    ) : (
-                      <div className="space-y-2 py-2">
-                        <div className="flex items-center justify-center gap-2">
-                          <label
-                            htmlFor="pos-product-image-upload"
-                            className={`px-3.5 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors ${
-                              isUploadingImage ? 'opacity-50 cursor-wait' : ''
-                            }`}
-                          >
-                            <Upload className="w-3.5 h-3.5" />
-                            <span>{isUploadingImage ? 'Optimizing photo...' : 'Choose File from Device'}</span>
-                          </label>
-                          <input
-                            id="pos-product-image-upload"
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImageFileUpload}
-                            disabled={isUploadingImage}
-                            className="hidden"
-                          />
+                    )}
 
-                          {/* Mobile/Tablet Camera direct snap */}
-                          <label
-                            htmlFor="pos-product-camera-snap"
-                            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
-                            title="Take photo with camera"
-                          >
-                            <Camera className="w-3.5 h-3.5" />
-                            <span>Take Photo</span>
-                          </label>
-                          <input
-                            id="pos-product-camera-snap"
-                            type="file"
-                            accept="image/*"
-                            capture="environment"
-                            onChange={handleImageFileUpload}
-                            disabled={isUploadingImage}
-                            className="hidden"
-                          />
-
-                          <button
-                            type="button"
-                            onClick={() => setShowImageLibraryModal(true)}
-                            className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
-                          >
-                            <ImageIcon className="w-3.5 h-3.5" />
-                            <span>Library ({availableImages.length})</span>
-                          </button>
-                        </div>
-
-                        <p className="text-[11px] text-slate-500">
-                          Or drag & drop photo file directly here (JPG, PNG, WebP)
-                        </p>
+                    {imageAutoDetected && (
+                      <div className="flex items-center gap-1.5 text-xs text-emerald-700 font-semibold">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Previously registered photo automatically matched & reflected!</span>
                       </div>
                     )}
                   </div>
 
-                  {uploadSuccessMsg && (
-                    <div className="p-2 bg-emerald-50 border border-emerald-300 rounded text-xs text-emerald-800 font-medium flex items-center gap-1.5">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                      <span>{uploadSuccessMsg}</span>
-                    </div>
-                  )}
+                  {/* Submit Buttons */}
+                  <div className="pt-3 border-t border-slate-200 flex flex-wrap items-center gap-2.5">
+                    {!editingPartId && (
+                      <button
+                        type="button"
+                        onClick={handleSaveAndAddNextInCategory}
+                        className="flex-1 min-w-[200px] py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg shadow-sm transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                        title="Save this product and immediately keep category and photo for the next product"
+                      >
+                        <ListPlus className="w-4 h-4" />
+                        <span>Save & Add Another in "{category.split(' ')[0]}..."</span>
+                      </button>
+                    )}
 
-                  {imageAutoDetected && (
-                    <div className="flex items-center gap-1.5 text-xs text-emerald-700 font-semibold">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Previously registered photo automatically matched & reflected!</span>
-                    </div>
-                  )}
+                    <button
+                      type="submit"
+                      className="py-2.5 px-4 bg-[#0A192F] hover:bg-[#132A4D] text-white font-bold text-xs rounded-lg shadow-sm transition-colors cursor-pointer"
+                    >
+                      {editingPartId ? 'Update Stock Item' : 'Save & Finish'}
+                    </button>
 
-                  {/* Collapsible toggle for advanced/legacy URL input */}
-                  <div className="pt-1">
                     <button
                       type="button"
-                      onClick={() => setShowAdvancedUrlInput(!showAdvancedUrlInput)}
-                      className="text-[10px] text-slate-500 hover:text-slate-700 font-medium underline cursor-pointer"
+                      onClick={handleResetForm}
+                      className="px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-lg transition-colors cursor-pointer"
                     >
-                      {showAdvancedUrlInput ? 'Hide manual URL input' : 'Optional: Type image URL manually'}
+                      Clear
                     </button>
-                    {showAdvancedUrlInput && (
-                      <div className="mt-1.5">
-                        <input
-                          type="text"
-                          value={imageUrl}
-                          onChange={(e) => {
-                            setImageUrl(e.target.value);
-                            setImageAutoDetected(false);
-                          }}
-                          placeholder="https://... or /productsimg/..."
-                          className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded text-xs font-mono text-slate-800 focus:outline-none focus:border-blue-700"
-                        />
-                      </div>
-                    )}
                   </div>
-                </div>
 
-                {/* Submit Buttons */}
-                <div className="pt-3 border-t border-slate-200 flex items-center gap-3">
-                  <button
-                    type="submit"
-                    className="flex-1 py-2.5 bg-[#0A192F] hover:bg-[#132A4D] text-white font-bold text-xs rounded-lg shadow-sm transition-colors cursor-pointer"
-                  >
-                    {editingPartId ? 'Update Stock Item' : 'Save & Register into Room B13'}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleResetForm}
-                    className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-lg transition-colors cursor-pointer"
-                  >
-                    Clear Form
-                  </button>
-                </div>
-
-              </form>
+                </form>
+              )}
 
             </div>
           )}
 
           {/* Right: Live Registered Inventory List (5 Cols or Full Width) */}
-          <div className={isAdmin ? "lg:col-span-5 space-y-4" : "w-full space-y-4"}>
+          <div className={isAdmin ? `${stockEntryMode === 'batch' ? 'lg:col-span-4' : 'lg:col-span-5'} space-y-4` : "w-full space-y-4"}>
               <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="font-bold text-sm text-[#0A192F] uppercase tracking-wider font-mono">
@@ -1901,12 +2373,12 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
               
               <div className="text-center space-y-1 pb-3 border-b border-dashed border-slate-300">
                 <h2 className="font-black text-base text-slate-900 font-['Chivo']">
-                  JOYDEVINE AUTO SPARES
+                  JOYDIVINE AUTO SPARES
                 </h2>
                 <p className="text-[11px] text-slate-600">
-                  Room B13, Kirinyaga Road, Nairobi<br />
-                  Near Kirinyaga Crescent, Opp. Seventies Plaza<br />
-                  Tel: 0720 357 361 / 0722 604 419
+                  Room B13, Kirinyaga Crescent, Nairobi<br />
+                  Opposite Seventies Plaza<br />
+                  Tel: 0111 871 428 / 0720 357 361 / 0722 604 419
                 </p>
               </div>
 
@@ -1970,7 +2442,7 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
               </div>
 
               <div className="text-center text-[10px] text-slate-500 pt-3 border-t border-dashed border-slate-300">
-                Thank you for choosing JoyDevine Auto Spares!<br />
+                Thank you for choosing JoyDivine Auto Spares!<br />
                 Goods once sold in good condition are not returnable without receipt.
               </div>
 

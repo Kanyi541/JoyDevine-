@@ -1,22 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Users, 
-  UserPlus, 
+  People as Users, 
+  PersonPlus as UserPlus, 
   ShieldCheck, 
-  User, 
+  Person as User, 
   Key, 
-  Trash2, 
-  CheckCircle2, 
-  XCircle, 
-  AlertTriangle, 
+  Trash3 as Trash2, 
+  CheckCircleFill as CheckCircle2, 
+  XCircleFill as XCircle, 
+  ExclamationTriangleFill as AlertTriangle, 
   Lock, 
   Eye, 
-  EyeOff, 
-  X,
+  EyeSlash as EyeOff, 
+  XLg as X,
   Shield,
   Clock,
-  Sparkles
-} from 'lucide-react';
+  Stars as Sparkles
+} from 'react-bootstrap-icons';
 import { POSUser, UserRole } from '../types';
 import { 
   subscribeToPOSUsers, 
@@ -155,7 +155,7 @@ export const POSUserManagement: React.FC<POSUserManagementProps> = ({ currentUse
                 POS Staff & User Management
               </h2>
               <p className="text-xs text-slate-500">
-                Kirinyaga Road Counter Staff Access • Synced in Real-Time to Google Cloud Firestore
+                Kirinyaga Crescent Counter Staff Access • Synced in Real-Time to Google Cloud Firestore
               </p>
             </div>
           </div>
@@ -357,7 +357,7 @@ export const POSUserManagement: React.FC<POSUserManagementProps> = ({ currentUse
       <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs text-slate-600 space-y-2">
         <h4 className="font-bold text-slate-800 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
           <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-          Access Level Guidelines for Kirinyaga Road Counter:
+          Access Level Guidelines for Kirinyaga Crescent Counter:
         </h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
           <div className="p-3 bg-white rounded-lg border border-slate-200">

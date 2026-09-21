@@ -1,19 +1,19 @@
 import React from 'react';
 import { 
-  X, 
+  XLg as X, 
   Copy, 
-  Check, 
-  MessageCircle, 
-  Phone, 
-  ShoppingCart, 
-  Warehouse,
+  CheckLg as Check, 
+  Whatsapp as MessageCircle, 
+  TelephoneFill as Phone, 
+  Cart3 as ShoppingCart, 
+  Building as Warehouse,
   ShieldCheck,
-  MapPin,
-  AlertTriangle,
-  Car
-} from 'lucide-react';
+  GeoAltFill as MapPin,
+  ExclamationTriangleFill as AlertTriangle,
+  CarFrontFill as Car
+} from 'react-bootstrap-icons';
 import { AutoPart } from '../types';
-import { formatImageUrlForWhatsApp } from '../services/productImageService';
+import { buildWhatsAppPartOrderUrl, PRIMARY_PHONE_DISPLAY, PRIMARY_PHONE_TEL } from '../services/whatsappService';
 
 interface ProductDetailModalProps {
   part: AutoPart | null;
@@ -43,10 +43,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
     setTimeout(() => setAdded(false), 1500);
   };
 
-  const absolutePhotoUrl = formatImageUrlForWhatsApp(part.imageUrl);
-  const waLink = `https://wa.me/254720357361?text=${encodeURIComponent(
-    `Hello JoyDevine Auto Spares (Room B13, Kirinyaga Rd), I would like to inquire about purchasing:\n- Item: ${part.itemName}\n- YB No: ${part.ybNo}\n- OEM Code: ${part.oem}\n- Price: Ksh ${part.priceKes.toLocaleString()}\n- Product Photo: ${absolutePhotoUrl}\nIs it available right now at the shop?`
-  )}`;
+  const waLink = buildWhatsAppPartOrderUrl(part);
 
   return (
     <div className="fixed inset-0 z-50 bg-[#0A192F]/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
@@ -87,10 +84,10 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 <div className="bg-rose-50 border border-rose-200 rounded-lg p-3 text-xs text-rose-900 space-y-1">
                   <div className="flex items-center gap-1.5 font-bold text-rose-800">
                     <AlertTriangle className="w-4 h-4 text-rose-700 shrink-0" />
-                    <span>Kirinyaga Road Store Status: Out of Stock</span>
+                    <span>Kirinyaga Crescent Store Status: Out of Stock</span>
                   </div>
                   <div className="text-[11px] text-rose-800">
-                    Currently 0 units at Room B13 counter. Contact us on WhatsApp to order fresh incoming batch.
+                    Currently 0 units at Room B13 counter (opp. Seventies Plaza). Contact us on WhatsApp to reserve incoming stock.
                   </div>
                 </div>
               ) : part.stock < 5 ? (
@@ -105,17 +102,17 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     </span>
                   </div>
                   <div className="text-[11px] text-amber-900">
-                    <strong className="text-amber-950 font-bold">{part.stock} units</strong> physically remaining at Room B13. Reserve now to guarantee availability.
+                    <strong className="text-amber-950 font-bold">{part.stock} units</strong> physically remaining at Room B13 Kirinyaga Crescent. Reserve now to guarantee availability.
                   </div>
                 </div>
               ) : (
                 <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-xs text-emerald-900 space-y-1">
                   <div className="flex items-center gap-1.5 font-bold">
                     <Warehouse className="w-4 h-4 text-emerald-700 shrink-0" />
-                    <span>Kirinyaga Road Store Status: In Stock</span>
+                    <span>Kirinyaga Crescent Store Status: In Stock</span>
                   </div>
                   <div className="text-[11px] text-emerald-800">
-                    <strong className="text-emerald-950 font-bold">{part.stock} units</strong> physically in stock at Room B13, ready for immediate counter pickup.
+                    <strong className="text-emerald-950 font-bold">{part.stock} units</strong> physically in stock at Room B13 (opp. Seventies Plaza), ready for immediate counter pickup.
                   </div>
                 </div>
               )}
@@ -227,7 +224,15 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg flex items-center justify-center gap-2 transition-colors shadow-sm"
               >
                 <MessageCircle className="w-4 h-4" />
-                <span>Confirm & Order on WhatsApp</span>
+                <span>Confirm & Order on WhatsApp ({PRIMARY_PHONE_DISPLAY})</span>
+              </a>
+
+              <a
+                href={`tel:${PRIMARY_PHONE_TEL}`}
+                className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-[#0A192F] font-bold text-xs rounded-lg flex items-center justify-center gap-2 transition-colors border border-slate-200"
+              >
+                <Phone className="w-3.5 h-3.5 text-blue-700" />
+                <span>Call Hotline Directly ({PRIMARY_PHONE_DISPLAY})</span>
               </a>
             </div>
 

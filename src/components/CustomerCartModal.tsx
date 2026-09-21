@@ -1,18 +1,24 @@
 import React, { useState } from 'react';
 import { 
-  X, 
-  Trash2, 
-  MessageCircle, 
-  MapPin, 
-  Phone, 
+  XLg as X, 
+  Trash3 as Trash2, 
+  Whatsapp as MessageCircle, 
+  GeoAltFill as MapPin, 
+  TelephoneFill as Phone, 
   Truck, 
-  Store, 
-  CheckCircle2, 
+  Shop as Store, 
+  CheckCircleFill as CheckCircle2, 
   ShieldCheck,
   ArrowRight
-} from 'lucide-react';
+} from 'react-bootstrap-icons';
 import { AutoPart } from '../types';
-import { formatImageUrlForWhatsApp } from '../services/productImageService';
+import { 
+  PRIMARY_WHATSAPP_PHONE, 
+  PRIMARY_PHONE_DISPLAY,
+  PRIMARY_PHONE_TEL,
+  SECONDARY_PHONE_1_DISPLAY,
+  getPublicImageUrlForWhatsApp 
+} from '../services/whatsappService';
 
 export interface CartItem {
   part: AutoPart;
@@ -57,15 +63,23 @@ export const CustomerCartModal: React.FC<CustomerCartModalProps> = ({
   const handleWhatsAppOrder = () => {
     if (cartItems.length === 0) return;
 
-    let text = `*JOYDEVINE AUTO SPARES - ORDER REQUEST*\n`;
-    text += `*Location:* Room B13, Kirinyaga Road, Nairobi\n\n`;
+    const firstItemPhoto = getPublicImageUrlForWhatsApp(
+      cartItems[0].part.imageUrl,
+      cartItems[0].part.category,
+      cartItems[0].part.ybNo
+    );
+
+    // Image URL first on Line 1 so WhatsApp unfurls the image preview card
+    let text = `${firstItemPhoto}\n\n`;
+    text += `*JOYDIVINE AUTO SPARES - ORDER REQUEST*\n`;
+    text += `*Location:* Room B13, Kirinyaga Crescent, opposite Seventies Plaza, Nairobi\n\n`;
     
     if (customerName) text += `*Customer:* ${customerName}\n`;
     if (customerPhone) text += `*Phone:* ${customerPhone}\n`;
     
     text += `*Fulfillment:* ${
       deliveryMethod === 'PICKUP' 
-        ? 'Counter Collection at Room B13, Kirinyaga Rd' 
+        ? 'Counter Collection at Room B13, Kirinyaga Crescent (opp. Seventies Plaza)' 
         : deliveryMethod === 'CBD_RIDER' 
         ? 'Nairobi CBD Boda/Rider Dispatch (+KES 300)' 
         : 'Countrywide Parcel Dispatch (+KES 500)'
@@ -73,10 +87,9 @@ export const CustomerCartModal: React.FC<CustomerCartModalProps> = ({
 
     text += `*ORDER ITEMS:*\n`;
     cartItems.forEach((item, index) => {
-      const itemPhoto = formatImageUrlForWhatsApp(item.part.imageUrl);
+      const itemPhoto = getPublicImageUrlForWhatsApp(item.part.imageUrl, item.part.category, item.part.ybNo);
       text += `${index + 1}. *${item.part.itemName}*\n`;
-      text += `   - YB No: ${item.part.ybNo}\n`;
-      text += `   - OEM: ${item.part.oem}\n`;
+      text += `   - YB No: ${item.part.ybNo} | OEM: ${item.part.oem}\n`;
       text += `   - Qty: ${item.quantity} x KES ${item.part.priceKes.toLocaleString()} = KES ${(item.part.priceKes * item.quantity).toLocaleString()}\n`;
       if (itemPhoto) {
         text += `   - Photo: ${itemPhoto}\n`;
@@ -88,12 +101,12 @@ export const CustomerCartModal: React.FC<CustomerCartModalProps> = ({
       text += `*Delivery Fee:* KES ${deliveryFeeKes.toLocaleString()}\n`;
     }
     text += `*GRAND TOTAL:* KES ${grandTotalKes.toLocaleString()}\n\n`;
-    text += `Please confirm stock and provide payment till / dispatch details. Thank you!`;
+    text += `Hello JoyDivine Auto Spares, please confirm stock availability and provide M-Pesa payment details. Thank you!`;
 
     const code = `JD-${Math.floor(1000 + Math.random() * 9000)}`;
     setReservationCode(code);
 
-    const waUrl = `https://wa.me/254720357361?text=${encodeURIComponent(text)}`;
+    const waUrl = `https://wa.me/${PRIMARY_WHATSAPP_PHONE}?text=${encodeURIComponent(text)}`;
     window.open(waUrl, '_blank');
   };
 
@@ -128,7 +141,7 @@ export const CustomerCartModal: React.FC<CustomerCartModalProps> = ({
               </div>
               <h3 className="font-bold text-base text-slate-800">Your Cart is Empty</h3>
               <p className="text-xs text-slate-500 max-w-xs mx-auto">
-                Browse our Kirinyaga Road catalog and click "Add to Cart" or order directly on WhatsApp.
+                Browse our Kirinyaga Crescent catalog and click "Add to Cart" or order directly on WhatsApp.
               </p>
               <button
                 onClick={onClose}
@@ -232,7 +245,7 @@ export const CustomerCartModal: React.FC<CustomerCartModalProps> = ({
                       <Store className="w-4 h-4 text-blue-700" />
                       <div>
                         <div className="font-bold">Counter Pickup (Room B13)</div>
-                        <div className="text-[11px] text-slate-500">Kirinyaga Rd near Kirinyaga Crescent, Nairobi</div>
+                        <div className="text-[11px] text-slate-500">Kirinyaga Crescent, opposite Seventies Plaza, Nairobi</div>
                       </div>
                     </div>
                     <span className="font-bold text-emerald-700">FREE</span>
@@ -334,11 +347,24 @@ export const CustomerCartModal: React.FC<CustomerCartModalProps> = ({
               className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-lg shadow-sm flex items-center justify-center gap-2 transition-colors cursor-pointer"
             >
               <MessageCircle className="w-4 h-4" />
-              <span>Send Order to WhatsApp (0720 357 361)</span>
+              <span>Send Order to WhatsApp ({PRIMARY_PHONE_DISPLAY})</span>
             </button>
 
+            <div className="flex items-center justify-center gap-2 text-xs text-slate-600 pt-1">
+              <span>Prefer to call?</span>
+              <a 
+                href={`tel:${PRIMARY_PHONE_TEL}`}
+                className="font-bold text-blue-800 hover:text-blue-950 font-mono inline-flex items-center gap-1"
+              >
+                <Phone className="w-3 h-3 text-emerald-600" />
+                <span>{PRIMARY_PHONE_DISPLAY}</span>
+              </a>
+              <span className="text-slate-400">•</span>
+              <span className="font-mono text-[11px] text-slate-500">{SECONDARY_PHONE_1_DISPLAY}</span>
+            </div>
+
             <p className="text-[11px] text-center text-slate-500">
-              Orders are confirmed immediately at Room B13, Kirinyaga Road. M-Pesa Buy Goods & Cash supported.
+              Orders are confirmed immediately at Room B13, Kirinyaga Crescent, opposite Seventies Plaza. M-Pesa Buy Goods & Cash supported.
             </p>
 
           </div>

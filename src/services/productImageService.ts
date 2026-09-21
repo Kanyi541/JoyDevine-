@@ -1,3 +1,5 @@
+import { CATEGORY_DEFAULT_IMAGES } from '../data/joydevineParts';
+
 /**
  * Product Image Management Service
  * Supports direct local image file compression for Firestore database synchronization,
@@ -116,6 +118,13 @@ export async function uploadProductImage(file: File): Promise<{ url: string; fil
     filename: processed.filename,
     diagnostic: processed,
   };
+}
+
+/**
+ * Get default image for a category
+ */
+export function getCategoryDefaultImage(categoryName: string): string {
+  return CATEGORY_DEFAULT_IMAGES[categoryName] || '/productsimg/brake-wheel-cylinder.jpg';
 }
 
 /**
