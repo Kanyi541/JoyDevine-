@@ -159,6 +159,7 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
   // Live Parts & Search
   const [parts, setParts] = useState<AutoPart[]>(getStoredParts());
   const [inventorySearch, setInventorySearch] = useState('');
+  const [inventoryCategory, setInventoryCategory] = useState<string>('All Parts');
   const [inventoryFilterLowStock, setInventoryFilterLowStock] = useState(false);
 
   // Firebase Database Sync State
@@ -179,6 +180,11 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [uploadSuccessMsg, setUploadSuccessMsg] = useState<string | null>(null);
   const [availableImages, setAvailableImages] = useState<ProductImageItem[]>([]);
+
+  // Delete Confirmation Dialog State (in-app modal to prevent iframe confirm blockage)
+  const [partToDelete, setPartToDelete] = useState<AutoPart | null>(null);
+  const [saleToDelete, setSaleToDelete] = useState<POSSaleRecord | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Subscribe to live Firestore changes and load available images
   useEffect(() => {
@@ -222,7 +228,6 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
 
   // Sync / Migrate all catalog parts to productsimg paths in Firestore
   const handleSeedWithProductsImg = async () => {
-    if (!window.confirm('Update all catalog records in Firestore to source images directly from the /productsimg/ folder?')) return;
     setIsSyncingFirebase(true);
     try {
       await seedFirestoreParts(true);
@@ -288,6 +293,9 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
 
   // POS Cashier Ticket State
   const [cashierSearch, setCashierSearch] = useState('');
+  const [cashierCategory, setCashierCategory] = useState<string>('All Parts');
+  const [showMobileTicketModal, setShowMobileTicketModal] = useState(false);
+  const [ticketFlash, setTicketFlash] = useState(false);
   const [ticketItems, setTicketItems] = useState<POSSaleItem[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<'M-PESA' | 'CASH' | 'CARD' | 'CREDIT/INVOICE'>('M-PESA');
   const [mpesaRef, setMpesaRef] = useState('');
@@ -589,10 +597,21 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
     }
   };
 
-  const handleDeletePart = async (id: string, name: string) => {
-    if (confirm(`Remove "${name}" permanently from inventory?`)) {
-      await deletePart(id);
+  const handleDeletePart = (part: AutoPart) => {
+    setPartToDelete(part);
+  };
+
+  const confirmDeletePart = async () => {
+    if (!partToDelete) return;
+    setIsDeleting(true);
+    try {
+      await deletePart(partToDelete.id);
       refreshPartsList();
+    } catch (err) {
+      console.error('Failed to delete part:', err);
+    } finally {
+      setIsDeleting(false);
+      setPartToDelete(null);
     }
   };
 
@@ -621,6 +640,11 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
         },
       ];
     });
+
+    // Make the Current Sales Ticket card appear immediately
+    setShowMobileTicketModal(true);
+    setTicketFlash(true);
+    setTimeout(() => setTicketFlash(false), 1200);
   };
 
   const handleUpdateTicketQty = (partId: string, delta: number) => {
@@ -659,17 +683,13 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
   const handleCompleteCheckout = async () => {
     if (ticketItems.length === 0) return;
 
-    if (paymentMethod === 'M-PESA' && !mpesaRef) {
-      if (!confirm('M-PESA transaction reference code is empty. Proceed with counter cash checkout instead?')) {
-        return;
-      }
-    }
+    const finalMpesaRef = mpesaRef.trim().toUpperCase();
 
     const saleRecord = await recordPOSSale({
       items: ticketItems,
       totalKes: ticketTotalKes,
       paymentMethod,
-      mpesaRef: mpesaRef.trim().toUpperCase() || undefined,
+      mpesaRef: finalMpesaRef || undefined,
       customerName: customerName.trim() || undefined,
       customerPhone: customerPhone.trim() || undefined,
       cashierName: currentUser ? `${currentUser.displayName} (@${currentUser.username})` : 'Counter Cashier (Room B13)',
@@ -680,15 +700,22 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
     handleClearTicket();
   };
 
-  const handleDeleteSale = async (saleId: string) => {
+  const handleDeleteSale = (sale: POSSaleRecord) => {
     if (!isAdmin) return;
-    if (!confirm('Are you sure you want to delete this sales transaction from the audit log?')) return;
-    setDeletingSaleId(saleId);
+    setSaleToDelete(sale);
+  };
+
+  const confirmDeleteSale = async () => {
+    if (!saleToDelete) return;
+    setIsDeleting(true);
     try {
-      await deleteSaleRecord(saleId);
+      await deleteSaleRecord(saleToDelete.id);
       setSalesRecords(getSalesHistory());
+    } catch (err) {
+      console.error('Failed to delete sale:', err);
     } finally {
-      setDeletingSaleId(null);
+      setIsDeleting(false);
+      setSaleToDelete(null);
     }
   };
 
@@ -730,14 +757,17 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
         <div className="w-full max-w-md bg-white border border-slate-200 rounded-xl shadow-lg p-6 sm:p-8 space-y-6">
           
           <div className="text-center space-y-2">
-            <div className="w-14 h-14 bg-[#0A192F] text-white rounded-xl flex items-center justify-center mx-auto shadow-sm">
-              <ShieldCheck className="w-7 h-7 text-blue-400" />
-            </div>
+            <img 
+              src="/joydevine-logo.png" 
+              alt="JoyDivine Auto Spares" 
+              className="w-20 h-20 object-contain rounded-full border border-blue-900/15 shadow-xs mx-auto"
+              referrerPolicy="no-referrer"
+            />
             <h2 className="text-xl font-black text-[#0A192F] font-['Chivo'] uppercase tracking-tight">
               JOYDIVINE COUNTER POS
             </h2>
             <p className="text-xs text-slate-500">
-              Room B13, Kirinyaga Crescent, Opp. Seventies Plaza, Nairobi • Restricted Staff & Admin Portal
+              Room B13, Kirinyaga Crescent, Opp. Seventies Plaza, Nairobi
             </p>
           </div>
 
@@ -857,9 +887,12 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
           
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded bg-blue-700 flex items-center justify-center font-black font-mono text-sm">
-              B13
-            </div>
+            <img 
+              src="/joydevine-logo.png" 
+              alt="JoyDivine Auto Spares" 
+              className="w-9 h-9 object-contain rounded-full border border-blue-400/30 shadow-xs shrink-0 bg-white"
+              referrerPolicy="no-referrer"
+            />
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="font-black text-sm sm:text-base font-['Chivo'] tracking-wide">
@@ -984,315 +1017,534 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
         </div>
       </div>
 
-      {/* Google Cloud Firestore Live Status Bar */}
-      <div className="bg-[#0c1f38] text-slate-200 border-b border-[#18365f] px-4 sm:px-6 lg:px-8 py-2 text-xs">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5 bg-slate-900/60 px-2 py-1 rounded border border-slate-700">
-              <Database className="w-3.5 h-3.5 text-blue-400" />
-              <span className={`w-2 h-2 rounded-full ${dbStatus.isConnected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></span>
-              <span className="font-mono font-bold text-white">
-                {dbStatus.isConnected ? 'Google Cloud Firestore LIVE' : 'Connecting to Firestore...'}
-              </span>
-            </div>
-            <span className="text-slate-400">•</span>
-            <span className="text-slate-300 font-mono text-[11px]">
-              Project: <span className="text-blue-300">gen-lang-client-0619428861</span>
-            </span>
-            <span className="text-slate-400">•</span>
-            <span className="text-slate-300">
-              Collection: <span className="font-mono font-bold text-emerald-400">parts</span> ({parts.length} items)
-            </span>
-            {dbStatus.lastSyncTime && (
-              <>
-                <span className="text-slate-400">•</span>
-                <span className="text-slate-400 text-[11px]">Last fetch: {dbStatus.lastSyncTime}</span>
-              </>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleSyncFromFirebase}
-              disabled={isSyncingFirebase}
-              className="px-2.5 py-1 bg-blue-700 hover:bg-blue-600 disabled:opacity-50 text-white text-[11px] font-bold rounded flex items-center gap-1 transition-colors cursor-pointer"
-              title="Query parts directly from Google Cloud Firestore"
-            >
-              <RefreshCw className={`w-3 h-3 ${isSyncingFirebase ? 'animate-spin' : ''}`} />
-              <span>{isSyncingFirebase ? 'Fetching from Cloud...' : 'Verify Cloud Fetch'}</span>
-            </button>
-
-            <button
-              onClick={handleSeedWithProductsImg}
-              disabled={isSyncingFirebase}
-              className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white text-[11px] font-bold rounded flex items-center gap-1 transition-colors cursor-pointer"
-              title="Sync all parts to use /productsimg/ folder paths"
-            >
-              <FolderCheck className="w-3 h-3" />
-              <span>Sync productsimg to Cloud</span>
-            </button>
-          </div>
-        </div>
-
-        {syncFeedback && (
-          <div className="max-w-7xl mx-auto mt-2 p-2 bg-emerald-900/90 border border-emerald-500 rounded text-emerald-100 text-xs font-medium flex items-center justify-between animate-fadeIn">
-            <span>{syncFeedback}</span>
-            <button onClick={() => setSyncFeedback(null)} className="text-emerald-300 hover:text-white ml-2 text-xs">✕ Dismiss</button>
-          </div>
-        )}
-      </div>
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         
         {/* TAB 1: CASHIER COUNTER REGISTER */}
         {activeTab === 'cashier' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            
-            {/* Left: Quick Search & Parts Selector (7 Cols) */}
-            <div className="lg:col-span-7 space-y-4">
-              <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-bold text-sm text-[#0A192F] uppercase tracking-wider font-mono">
-                    Counter Parts Lookup
-                  </h3>
-                  <span className="text-xs text-slate-500">
-                    Click part to add to sale ticket
-                  </span>
-                </div>
-
-                <div className="relative">
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
-                    type="text"
-                    value={cashierSearch}
-                    onChange={(e) => setCashierSearch(e.target.value)}
-                    placeholder="Search by YB No, OEM Code, or Part Name..."
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-900 focus:bg-white focus:outline-none focus:border-blue-700"
-                    autoFocus
-                  />
-                </div>
-              </div>
-
-              {/* Fast Lookup Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[600px] overflow-y-auto pr-1">
-                {parts
-                  .filter((p) => {
-                    const q = cashierSearch.toLowerCase();
-                    return (
-                      p.itemName.toLowerCase().includes(q) ||
-                      p.ybNo.toLowerCase().includes(q) ||
-                      p.oem.toLowerCase().includes(q) ||
-                      p.des.toLowerCase().includes(q)
-                    );
-                  })
-                  .map((part) => (
-                    <div
-                      key={part.id}
-                      onClick={() => handleAddToTicket(part)}
-                      className="bg-white border border-slate-200 hover:border-blue-600 rounded-xl p-3 flex gap-3 cursor-pointer shadow-sm hover:shadow transition-all group"
-                    >
-                      <div className="w-14 h-14 bg-slate-50 border border-slate-200 rounded p-1 flex items-center justify-center shrink-0">
-                        <img
-                          src={part.imageUrl}
-                          alt={part.itemName}
-                          className="max-h-full max-w-full object-contain"
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-1">
-                          <span className="text-xs font-mono font-bold text-white bg-[#0A192F] px-1.5 py-0.2 rounded">
-                            {part.ybNo}
-                          </span>
-                          <span className="text-[11px] font-mono text-slate-500 truncate">
-                            {part.oem}
-                          </span>
-                        </div>
-                        <h4 className="font-bold text-xs text-slate-900 truncate mt-1 group-hover:text-blue-800">
-                          {part.itemName}
-                        </h4>
-                        <div className="flex items-baseline justify-between mt-1 pt-1 border-t border-slate-100">
-                          <span className="text-xs font-bold text-blue-900 font-mono">
-                            KES {part.priceKes.toLocaleString()}
-                          </span>
-                          <div className="flex items-center gap-1">
-                            {part.stock < 5 && (
-                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-200">
-                                Low Stock
-                              </span>
-                            )}
-                            <span className="text-[10px] text-slate-500">
-                              Stock: <strong className={part.stock < 5 ? 'text-amber-700 font-bold' : 'text-slate-800'}>{part.stock}</strong>
-                            </span>
-                          </div>
-                        </div>
-                      </div>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              
+              {/* Left: Quick Search & Categorized Parts Selector (7 Cols) */}
+              <div className="lg:col-span-7 space-y-4">
+                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <h3 className="font-bold text-sm text-[#0A192F] uppercase tracking-wider font-mono">
+                        Counter Parts Register
+                      </h3>
+                      <p className="text-xs text-slate-500">
+                        Click any item to add it directly to the Current Sales Ticket
+                      </p>
                     </div>
-                  ))}
-              </div>
-            </div>
 
-            {/* Right: Counter Sales Ticket & Checkout (5 Cols) */}
-            <div className="lg:col-span-5">
-              <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-4 sm:p-5 space-y-4 sticky top-16">
-                
-                <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-                  <div>
-                    <h3 className="font-black text-sm text-[#0A192F] uppercase tracking-wider font-mono">
-                      Current Sales Ticket
-                    </h3>
-                    <span className="text-[11px] text-slate-500">Room B13 Counter Register</span>
-                  </div>
-                  {ticketItems.length > 0 && (
+                    {/* Button on mobile to view ticket */}
                     <button
-                      onClick={handleClearTicket}
-                      className="text-rose-600 hover:text-rose-700 text-xs font-bold flex items-center gap-1 cursor-pointer"
+                      type="button"
+                      onClick={() => setShowMobileTicketModal(true)}
+                      className="lg:hidden inline-flex items-center gap-2 px-3 py-1.5 bg-[#0A192F] text-white rounded-lg text-xs font-bold font-mono self-start sm:self-auto"
                     >
-                      <Trash2 className="w-3.5 h-3.5" /> Clear
+                      <ShoppingCart className="w-3.5 h-3.5 text-blue-400" />
+                      <span>Ticket ({ticketItems.length})</span>
+                      <span className="text-emerald-400">• KES {ticketTotalKes.toLocaleString()}</span>
                     </button>
-                  )}
+                  </div>
+
+                  {/* Single Unified Search Bar */}
+                  <div className="relative">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      type="text"
+                      value={cashierSearch}
+                      onChange={(e) => setCashierSearch(e.target.value)}
+                      placeholder="Search parts by name (e.g. Brake Master), YB No, OEM code, or car model..."
+                      className="w-full pl-10 pr-8 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs sm:text-sm text-slate-900 focus:bg-white focus:outline-none focus:border-blue-700"
+                      autoFocus
+                    />
+                    {cashierSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setCashierSearch('')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Arranged & Categorized Like Main Website */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none -mx-1 px-1">
+                    {['All Parts', ...Array.from(new Set(parts.map((p) => p.category).filter(Boolean)))].map((cat) => {
+                      const isSelected = cashierCategory === cat;
+                      const count = cat === 'All Parts'
+                        ? parts.length
+                        : parts.filter((p) => p.category === cat).length;
+                      return (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => setCashierCategory(cat)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer border flex items-center gap-1.5 shrink-0 ${
+                            isSelected
+                              ? 'bg-[#0A192F] text-white border-[#0A192F] shadow-2xs'
+                              : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-200'
+                          }`}
+                        >
+                          <span>{cat}</span>
+                          <span className={`text-[10px] font-mono px-1 rounded ${
+                            isSelected ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'
+                          }`}>
+                            {count}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
-                {/* Ticket Items List */}
-                {ticketItems.length === 0 ? (
-                  <div className="text-center py-12 text-slate-400 space-y-2">
-                    <ShoppingCart className="w-10 h-10 mx-auto opacity-30 text-slate-600" />
-                    <p className="text-xs">Ticket is empty. Click any spare part on the left to add.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                    {ticketItems.map((item) => (
+                {/* Categorized Parts Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[620px] overflow-y-auto pr-1">
+                  {parts
+                    .filter((p) => {
+                      const matchesCat = cashierCategory === 'All Parts' || p.category === cashierCategory;
+                      const q = cashierSearch.toLowerCase().trim();
+                      if (!q) return matchesCat;
+                      const terms = q.split(/\s+/).filter(Boolean);
+                      const searchable = `${p.itemName} ${p.ybNo} ${p.oem} ${p.des} ${p.category} ${p.brand || ''}`.toLowerCase();
+                      return matchesCat && terms.every((term) => searchable.includes(term));
+                    })
+                    .map((part) => (
                       <div
-                        key={item.part.id}
-                        className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between gap-2 text-xs"
+                        key={part.id}
+                        onClick={() => handleAddToTicket(part)}
+                        className="bg-white border border-slate-200 hover:border-blue-700 rounded-xl p-3 flex flex-col justify-between gap-2.5 cursor-pointer shadow-2xs hover:shadow-md transition-all group"
                       >
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5 font-mono">
-                            <span className="font-bold text-[#0A192F]">{item.part.ybNo}</span>
-                            <span className="text-slate-400">•</span>
-                            <span className="text-slate-600 truncate">{item.part.itemName}</span>
+                        <div className="flex gap-3">
+                          <div className="w-16 h-16 bg-slate-50 border border-slate-200 rounded-lg p-1 flex items-center justify-center shrink-0 overflow-hidden">
+                            {part.imageUrl ? (
+                              <img
+                                src={part.imageUrl}
+                                alt={part.itemName}
+                                className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform"
+                              />
+                            ) : (
+                              <Package className="w-6 h-6 text-slate-400" />
+                            )}
                           </div>
-                          <span className="text-slate-500 font-mono text-[11px]">
-                            KES {item.unitPriceKes.toLocaleString()} each
-                          </span>
+                          <div className="flex-1 min-w-0 space-y-1">
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="text-xs font-mono font-bold text-white bg-[#0A192F] px-1.5 py-0.5 rounded shadow-2xs">
+                                {part.ybNo}
+                              </span>
+                              <span className="text-[10px] font-mono text-slate-500 truncate max-w-[100px]">
+                                {part.oem}
+                              </span>
+                            </div>
+                            <h4 className="font-bold text-xs text-slate-900 line-clamp-2 group-hover:text-blue-900 transition-colors leading-tight">
+                              {part.itemName}
+                            </h4>
+                            <span className="text-[10px] text-slate-500 font-medium block truncate">
+                              {part.category}
+                            </span>
+                          </div>
                         </div>
 
-                        <div className="flex items-center gap-2 shrink-0">
-                          <div className="flex items-center border border-slate-300 rounded bg-white">
-                            <button
-                              onClick={() => handleUpdateTicketQty(item.part.id, -1)}
-                              className="px-2 py-0.5 font-bold hover:bg-slate-100"
-                            >
-                              -
-                            </button>
-                            <span className="px-1.5 font-mono font-bold text-slate-900">
-                              {item.quantity}
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                          <div>
+                            <span className="text-[9px] text-slate-400 block font-mono">COUNTER PRICE</span>
+                            <span className="text-xs font-black text-blue-950 font-mono">
+                              KES {part.priceKes.toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-bold ${
+                              part.stock <= 0 
+                                ? 'bg-rose-100 text-rose-800'
+                                : part.stock < 5
+                                ? 'bg-amber-100 text-amber-900'
+                                : 'bg-slate-100 text-slate-700'
+                            }`}>
+                              Stock: {part.stock}
                             </span>
                             <button
-                              onClick={() => handleUpdateTicketQty(item.part.id, 1)}
-                              className="px-2 py-0.5 font-bold hover:bg-slate-100"
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAddToTicket(part);
+                              }}
+                              className="px-2.5 py-1 bg-[#0A192F] hover:bg-blue-700 text-white rounded text-[11px] font-bold shadow-2xs transition-colors flex items-center gap-1 cursor-pointer"
                             >
-                              +
+                              <Plus className="w-3 h-3 stroke-[3]" />
+                              <span>Add</span>
                             </button>
                           </div>
-
-                          <span className="font-mono font-bold text-slate-900 w-16 text-right">
-                            KES {item.subtotalKes.toLocaleString()}
-                          </span>
-
-                          <button
-                            onClick={() => handleRemoveFromTicket(item.part.id)}
-                            className="text-slate-400 hover:text-rose-600 p-1"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
                         </div>
                       </div>
                     ))}
-                  </div>
-                )}
+                </div>
+              </div>
 
-                {/* Totals & Payment Method */}
-                {ticketItems.length > 0 && (
-                  <div className="pt-3 border-t border-slate-200 space-y-3">
-                    
-                    <div className="flex justify-between items-baseline">
-                      <span className="text-xs font-bold text-slate-600 uppercase font-mono">Ticket Total:</span>
-                      <span className="text-2xl font-black text-[#0A192F] font-mono">
-                        KES {ticketTotalKes.toLocaleString()}
-                      </span>
-                    </div>
-
-                    {/* Payment Mode Selector */}
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-700">
-                        Tender Method:
-                      </label>
-                      <div className="grid grid-cols-3 gap-2 text-xs">
-                        {(['M-PESA', 'CASH', 'CARD'] as const).map((mode) => (
-                          <button
-                            key={mode}
-                            type="button"
-                            onClick={() => setPaymentMethod(mode)}
-                            className={`py-2 px-2 rounded-lg font-bold border transition-colors cursor-pointer ${
-                              paymentMethod === mode
-                                ? 'bg-[#0A192F] text-white border-[#0A192F]'
-                                : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
-                            }`}
-                          >
-                            {mode}
-                          </button>
-                        ))}
+              {/* Right: Counter Sales Ticket Card & Checkout (5 Cols Desktop) */}
+              <div className="hidden lg:block lg:col-span-5">
+                <div className={`bg-white border rounded-xl shadow-sm p-4 sm:p-5 space-y-4 sticky top-16 transition-all ${
+                  ticketFlash ? 'ring-2 ring-blue-500 border-blue-600 shadow-md' : 'border-slate-200'
+                }`}>
+                  
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-black text-sm text-[#0A192F] uppercase tracking-wider font-mono">
+                          Current Sales Ticket
+                        </h3>
+                        {ticketItems.length > 0 && (
+                          <span className="bg-blue-100 text-blue-900 text-[11px] font-mono font-bold px-2 py-0.5 rounded-full">
+                            {ticketItems.reduce((sum, item) => sum + item.quantity, 0)} items
+                          </span>
+                        )}
                       </div>
+                      <span className="text-[11px] text-slate-500">Room B13 Counter Register</span>
                     </div>
+                    {ticketItems.length > 0 && (
+                      <button
+                        onClick={handleClearTicket}
+                        className="text-rose-600 hover:text-rose-700 text-xs font-bold flex items-center gap-1 cursor-pointer px-2 py-1 rounded hover:bg-rose-50"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> Clear
+                      </button>
+                    )}
+                  </div>
 
-                    {/* M-PESA Code Input */}
-                    {paymentMethod === 'M-PESA' && (
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">
-                          M-PESA Reference Code:
+                  {/* Ticket Items List */}
+                  {ticketItems.length === 0 ? (
+                    <div className="text-center py-12 text-slate-400 space-y-2">
+                      <ShoppingCart className="w-10 h-10 mx-auto opacity-30 text-slate-600" />
+                      <p className="text-xs font-medium">Ticket is empty.</p>
+                      <p className="text-[11px] text-slate-400">Click any spare part on the counter to add.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                      {ticketItems.map((item) => (
+                        <div
+                          key={item.part.id}
+                          className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between gap-2 text-xs"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 font-mono">
+                              <span className="font-bold text-[#0A192F]">{item.part.ybNo}</span>
+                              <span className="text-slate-400">•</span>
+                              <span className="text-slate-700 truncate font-sans font-medium">{item.part.itemName}</span>
+                            </div>
+                            <span className="text-slate-500 font-mono text-[11px]">
+                              KES {item.unitPriceKes.toLocaleString()} each
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <div className="flex items-center border border-slate-300 rounded bg-white">
+                              <button
+                                onClick={() => handleUpdateTicketQty(item.part.id, -1)}
+                                className="px-2 py-0.5 font-bold hover:bg-slate-100 text-slate-700"
+                              >
+                                -
+                              </button>
+                              <span className="px-1.5 font-mono font-bold text-slate-900">
+                                {item.quantity}
+                              </span>
+                              <button
+                                onClick={() => handleUpdateTicketQty(item.part.id, 1)}
+                                className="px-2 py-0.5 font-bold hover:bg-slate-100 text-slate-700"
+                              >
+                                +
+                              </button>
+                            </div>
+
+                            <span className="font-mono font-bold text-slate-900 w-16 text-right">
+                              KES {item.subtotalKes.toLocaleString()}
+                            </span>
+
+                            <button
+                              onClick={() => handleRemoveFromTicket(item.part.id)}
+                              className="text-slate-400 hover:text-rose-600 p-1"
+                              title="Remove item"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Totals & Payment Method */}
+                  {ticketItems.length > 0 && (
+                    <div className="pt-3 border-t border-slate-200 space-y-3">
+                      <div className="flex justify-between items-baseline bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                        <span className="text-xs font-bold text-slate-700 uppercase font-mono">Ticket Total:</span>
+                        <span className="text-xl sm:text-2xl font-black text-[#0A192F] font-mono">
+                          KES {ticketTotalKes.toLocaleString()}
+                        </span>
+                      </div>
+
+                      {/* Payment Mode Selector */}
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-700">
+                          Tender Method:
                         </label>
+                        <div className="grid grid-cols-3 gap-2 text-xs">
+                          {(['M-PESA', 'CASH', 'CARD'] as const).map((mode) => (
+                            <button
+                              key={mode}
+                              type="button"
+                              onClick={() => setPaymentMethod(mode)}
+                              className={`py-2 px-2 rounded-lg font-bold border transition-colors cursor-pointer ${
+                                paymentMethod === mode
+                                  ? 'bg-[#0A192F] text-white border-[#0A192F]'
+                                  : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
+                              }`}
+                            >
+                              {mode}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* M-PESA Code Input */}
+                      {paymentMethod === 'M-PESA' && (
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">
+                            M-PESA Reference Code:
+                          </label>
+                          <input
+                            type="text"
+                            value={mpesaRef}
+                            onChange={(e) => setMpesaRef(e.target.value.toUpperCase())}
+                            placeholder="e.g. TKA48X92LM"
+                            className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded text-xs font-mono font-bold uppercase focus:bg-white focus:outline-none focus:border-blue-700"
+                          />
+                        </div>
+                      )}
+
+                      {/* Customer Info (Optional) */}
+                      <div className="grid grid-cols-2 gap-2">
                         <input
                           type="text"
-                          value={mpesaRef}
-                          onChange={(e) => setMpesaRef(e.target.value.toUpperCase())}
-                          placeholder="e.g. TKA48X92LM"
-                          className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded text-xs font-mono font-bold uppercase focus:bg-white focus:outline-none focus:border-blue-700"
+                          value={customerName}
+                          onChange={(e) => setCustomerName(e.target.value)}
+                          placeholder="Customer / Garage Name"
+                          className="px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded text-xs focus:bg-white focus:outline-none focus:border-blue-700"
                         />
+                        <input
+                          type="text"
+                          value={customerPhone}
+                          onChange={(e) => setCustomerPhone(e.target.value)}
+                          placeholder="Customer Phone"
+                          className="px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded text-xs focus:bg-white focus:outline-none focus:border-blue-700 font-mono"
+                        />
+                      </div>
+
+                      {/* Complete Sale Button */}
+                      <button
+                        onClick={handleCompleteCheckout}
+                        className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <CheckCircle2 className="w-5 h-5" />
+                        <span>Complete Sale & Print Receipt</span>
+                      </button>
+                    </div>
+                  )}
+
+                </div>
+              </div>
+
+            </div>
+
+            {/* Modal / Card for Current Sales Ticket (appears automatically when clicked on item) */}
+            {showMobileTicketModal && (
+              <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+                <div 
+                  className="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 animate-in fade-in slide-in-from-bottom-6 duration-200"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-slate-50 rounded-t-2xl">
+                    <div className="flex items-center gap-2">
+                      <ShoppingCart className="w-5 h-5 text-blue-700" />
+                      <div>
+                        <h3 className="font-black text-sm text-[#0A192F] uppercase tracking-wider font-mono">
+                          Current Sales Ticket
+                        </h3>
+                        <span className="text-[11px] text-slate-500">
+                          {ticketItems.length} items • KES {ticketTotalKes.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setShowMobileTicketModal(false)}
+                      className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 cursor-pointer"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <div className="p-4 overflow-y-auto space-y-4 flex-1">
+                    {ticketItems.length === 0 ? (
+                      <div className="text-center py-10 text-slate-400 space-y-2">
+                        <ShoppingCart className="w-10 h-10 mx-auto opacity-30 text-slate-600" />
+                        <p className="text-xs">Ticket is empty.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {ticketItems.map((item) => (
+                          <div
+                            key={item.part.id}
+                            className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between gap-2 text-xs"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 font-mono">
+                                <span className="font-bold text-[#0A192F]">{item.part.ybNo}</span>
+                                <span className="text-slate-400">•</span>
+                                <span className="text-slate-700 truncate font-sans font-medium">{item.part.itemName}</span>
+                              </div>
+                              <span className="text-slate-500 font-mono text-[11px]">
+                                KES {item.unitPriceKes.toLocaleString()} each
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              <div className="flex items-center border border-slate-300 rounded bg-white">
+                                <button
+                                  onClick={() => handleUpdateTicketQty(item.part.id, -1)}
+                                  className="px-2 py-0.5 font-bold hover:bg-slate-100 text-slate-700"
+                                >
+                                  -
+                                </button>
+                                <span className="px-1.5 font-mono font-bold text-slate-900">
+                                  {item.quantity}
+                                </span>
+                                <button
+                                  onClick={() => handleUpdateTicketQty(item.part.id, 1)}
+                                  className="px-2 py-0.5 font-bold hover:bg-slate-100 text-slate-700"
+                                >
+                                  +
+                                </button>
+                              </div>
+
+                              <span className="font-mono font-bold text-slate-900 w-16 text-right">
+                                KES {item.subtotalKes.toLocaleString()}
+                              </span>
+
+                              <button
+                                onClick={() => handleRemoveFromTicket(item.part.id)}
+                                className="text-slate-400 hover:text-rose-600 p-1"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     )}
 
-                    {/* Customer Info (Optional) */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <input
-                        type="text"
-                        value={customerName}
-                        onChange={(e) => setCustomerName(e.target.value)}
-                        placeholder="Customer / Garage Name"
-                        className="px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded text-xs focus:bg-white focus:outline-none focus:border-blue-700"
-                      />
-                      <input
-                        type="text"
-                        value={customerPhone}
-                        onChange={(e) => setCustomerPhone(e.target.value)}
-                        placeholder="Customer Phone"
-                        className="px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded text-xs focus:bg-white focus:outline-none focus:border-blue-700 font-mono"
-                      />
-                    </div>
+                    {ticketItems.length > 0 && (
+                      <div className="space-y-3 pt-3 border-t border-slate-200">
+                        <div className="flex justify-between items-baseline bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                          <span className="text-xs font-bold text-slate-700 uppercase font-mono">Total Amount:</span>
+                          <span className="text-xl font-black text-[#0A192F] font-mono">
+                            KES {ticketTotalKes.toLocaleString()}
+                          </span>
+                        </div>
 
-                    {/* Complete Sale Button */}
-                    <button
-                      onClick={handleCompleteCheckout}
-                      className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2 cursor-pointer"
-                    >
-                      <CheckCircle2 className="w-5 h-5" />
-                      <span>Complete Sale & Print Receipt</span>
-                    </button>
+                        {/* Tender Method */}
+                        <div className="space-y-1.5">
+                          <label className="block text-xs font-bold text-slate-700">Payment Mode:</label>
+                          <div className="grid grid-cols-3 gap-2 text-xs">
+                            {(['M-PESA', 'CASH', 'CARD'] as const).map((mode) => (
+                              <button
+                                key={mode}
+                                type="button"
+                                onClick={() => setPaymentMethod(mode)}
+                                className={`py-2 px-2 rounded-lg font-bold border transition-colors cursor-pointer ${
+                                  paymentMethod === mode
+                                    ? 'bg-[#0A192F] text-white border-[#0A192F]'
+                                    : 'bg-slate-50 text-slate-700 border-slate-300'
+                                }`}
+                              >
+                                {mode}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
 
+                        {paymentMethod === 'M-PESA' && (
+                          <input
+                            type="text"
+                            value={mpesaRef}
+                            onChange={(e) => setMpesaRef(e.target.value.toUpperCase())}
+                            placeholder="M-PESA Code (e.g. TKA48X92LM)"
+                            className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded text-xs font-mono font-bold uppercase focus:bg-white"
+                          />
+                        )}
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            type="text"
+                            value={customerName}
+                            onChange={(e) => setCustomerName(e.target.value)}
+                            placeholder="Customer Name"
+                            className="px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded text-xs"
+                          />
+                          <input
+                            type="text"
+                            value={customerPhone}
+                            onChange={(e) => setCustomerPhone(e.target.value)}
+                            placeholder="Customer Phone"
+                            className="px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded text-xs font-mono"
+                          />
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            handleCompleteCheckout();
+                            setShowMobileTicketModal(false);
+                          }}
+                          className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm rounded-lg shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+                        >
+                          <CheckCircle2 className="w-5 h-5" />
+                          <span>Complete Sale & Print Receipt</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setShowMobileTicketModal(false)}
+                          className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-lg transition-colors cursor-pointer"
+                        >
+                          + Continue Adding Parts
+                        </button>
+                      </div>
+                    )}
                   </div>
-                )}
-
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* Bottom floating ticket bar on small screens */}
+            {ticketItems.length > 0 && !showMobileTicketModal && (
+              <div className="fixed bottom-4 right-4 sm:right-6 z-40 lg:hidden animate-in fade-in slide-in-from-bottom-4 duration-150">
+                <button
+                  onClick={() => setShowMobileTicketModal(true)}
+                  className="bg-[#0A192F] hover:bg-[#14284B] text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 border border-slate-700 cursor-pointer"
+                >
+                  <div className="w-6 h-6 rounded-full bg-blue-500 text-white font-bold text-xs flex items-center justify-center">
+                    {ticketItems.reduce((acc, i) => acc + i.quantity, 0)}
+                  </div>
+                  <div className="text-left">
+                    <div className="text-[10px] uppercase font-bold text-slate-300">Active Ticket</div>
+                    <div className="font-mono font-bold text-sm text-emerald-400">
+                      KES {ticketTotalKes.toLocaleString()}
+                    </div>
+                  </div>
+                  <span className="text-xs font-bold text-blue-300 ml-1">View Ticket Card →</span>
+                </button>
+              </div>
+            )}
 
           </div>
         )}
@@ -2014,33 +2266,64 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                   </button>
                 </div>
 
-                <div className="flex items-center justify-between gap-2">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                    <input
-                      type="text"
-                      value={inventorySearch}
-                      onChange={(e) => setInventorySearch(e.target.value)}
-                      placeholder="Filter by YB No or Name..."
-                      className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-blue-700"
-                    />
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                      <input
+                        type="text"
+                        value={inventorySearch}
+                        onChange={(e) => setInventorySearch(e.target.value)}
+                        placeholder="Search stock by name, YB No, OEM..."
+                        className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-blue-700"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setInventoryFilterLowStock(!inventoryFilterLowStock)}
+                      className={`px-2.5 py-1.5 rounded text-[11px] font-bold flex items-center gap-1 shrink-0 transition-colors border cursor-pointer ${
+                        inventoryFilterLowStock
+                          ? 'bg-amber-600 text-white border-amber-600'
+                          : 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100'
+                      }`}
+                      title="Toggle Low Stock Filter (< 5)"
+                    >
+                      <AlertTriangle className="w-3 h-3" />
+                      <span>Low Stock (&lt;5)</span>
+                      <span className="ml-0.5 px-1 py-0.2 text-[9px] bg-white/30 rounded">
+                        {parts.filter((p) => p.stock < 5).length}
+                      </span>
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setInventoryFilterLowStock(!inventoryFilterLowStock)}
-                    className={`px-2.5 py-1.5 rounded text-[11px] font-bold flex items-center gap-1 shrink-0 transition-colors border cursor-pointer ${
-                      inventoryFilterLowStock
-                        ? 'bg-amber-600 text-white border-amber-600'
-                        : 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100'
-                    }`}
-                    title="Toggle Low Stock Filter (< 5)"
-                  >
-                    <AlertTriangle className="w-3 h-3" />
-                    <span>Low Stock (&lt;5)</span>
-                    <span className="ml-0.5 px-1 py-0.2 text-[9px] bg-white/30 rounded">
-                      {parts.filter((p) => p.stock < 5).length}
-                    </span>
-                  </button>
+
+                  {/* Inventory Category Filter Tabs */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none -mx-1 px-1">
+                    {['All Parts', ...Array.from(new Set(parts.map((p) => p.category).filter(Boolean)))].map((cat) => {
+                      const isSelected = inventoryCategory === cat;
+                      const count = cat === 'All Parts'
+                        ? parts.length
+                        : parts.filter((p) => p.category === cat).length;
+                      return (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => setInventoryCategory(cat)}
+                          className={`px-2.5 py-1 rounded-md text-[11px] font-medium whitespace-nowrap transition-colors cursor-pointer border flex items-center gap-1 shrink-0 ${
+                            isSelected
+                              ? 'bg-[#0A192F] text-white border-[#0A192F]'
+                              : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-200'
+                          }`}
+                        >
+                          <span>{cat}</span>
+                          <span className={`text-[9px] font-mono px-1 rounded ${
+                            isSelected ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'
+                          }`}>
+                            {count}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
@@ -2048,13 +2331,14 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
               <div className="space-y-2 max-h-[580px] overflow-y-auto pr-1">
                 {parts
                   .filter((p) => {
+                    const matchesCat = inventoryCategory === 'All Parts' || p.category === inventoryCategory;
                     const matchesLow = !inventoryFilterLowStock || p.stock < 5;
-                    const q = inventorySearch.toLowerCase();
-                    const matchesText =
-                      p.itemName.toLowerCase().includes(q) ||
-                      p.ybNo.toLowerCase().includes(q) ||
-                      p.oem.toLowerCase().includes(q);
-                    return matchesLow && matchesText;
+                    const q = inventorySearch.toLowerCase().trim();
+                    if (!q) return matchesCat && matchesLow;
+                    const terms = q.split(/\s+/).filter(Boolean);
+                    const searchable = `${p.itemName} ${p.ybNo} ${p.oem} ${p.des} ${p.category}`.toLowerCase();
+                    const matchesText = terms.every((t) => searchable.includes(t));
+                    return matchesCat && matchesLow && matchesText;
                   })
                   .map((part) => (
                     <div
@@ -2111,7 +2395,7 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                             <Edit3 className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => handleDeletePart(part.id, part.itemName)}
+                            onClick={() => handleDeletePart(part)}
                             className="p-1.5 text-rose-600 hover:bg-rose-50 rounded cursor-pointer"
                             title="Delete Part"
                           >
@@ -2318,7 +2602,7 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                                 </button>
                                 {isAdmin && (
                                   <button
-                                    onClick={() => handleDeleteSale(sale.id)}
+                                    onClick={() => handleDeleteSale(sale)}
                                     disabled={deletingSaleId === sale.id}
                                     title="Delete/Void this transaction"
                                     className="text-rose-600 hover:text-rose-800 p-1 rounded hover:bg-rose-50 cursor-pointer"
@@ -2372,6 +2656,12 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
             <div id="printable-receipt" className="p-6 bg-white font-mono text-xs space-y-4">
               
               <div className="text-center space-y-1 pb-3 border-b border-dashed border-slate-300">
+                <img 
+                  src="/joydevine-logo.png" 
+                  alt="JoyDivine Auto Spares" 
+                  className="w-12 h-12 object-contain mx-auto mb-1.5 rounded-full"
+                  referrerPolicy="no-referrer"
+                />
                 <h2 className="font-black text-base text-slate-900 font-['Chivo']">
                   JOYDIVINE AUTO SPARES
                 </h2>
@@ -2652,12 +2942,118 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                 </button>
                 <button
                   type="submit"
-                  className="px-3 py-1.5 bg-[#0A192F] hover:bg-[#132A4D] text-white rounded font-bold"
+                  className="px-3 py-1.5 bg-[#0A192F] hover:bg-[#132A4D] text-white rounded font-bold cursor-pointer"
                 >
                   Save New Password
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* In-App Confirmation Modal: Delete Part (Bypasses browser iframe confirm blockage) */}
+      {partToDelete && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full border border-slate-200 overflow-hidden">
+            <div className="p-5 border-b border-slate-100 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-base text-slate-900">Delete Part from Inventory?</h3>
+                <p className="text-xs text-slate-500">Remove this item from the catalog.</p>
+              </div>
+            </div>
+
+            <div className="p-5 bg-slate-50 text-xs text-slate-700 space-y-3">
+              <div className="p-3.5 bg-white rounded-lg border border-slate-200 space-y-1">
+                <div className="font-bold text-slate-900 text-sm">{partToDelete.itemName}</div>
+                <div className="font-mono text-slate-500 text-[11px]">
+                  YB No: <span className="font-bold text-slate-800">{partToDelete.ybNo}</span> • OEM: {partToDelete.oem}
+                </div>
+                <div className="font-mono text-blue-900 font-bold">
+                  KES {partToDelete.priceKes.toLocaleString()}
+                </div>
+              </div>
+              <p className="text-slate-500 text-[11px]">
+                Are you sure you want to permanently delete this part from inventory and Firebase?
+              </p>
+            </div>
+
+            <div className="p-4 bg-white border-t border-slate-100 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setPartToDelete(null)}
+                className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50 cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={confirmDeletePart}
+                className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{isDeleting ? 'Deleting...' : 'Delete Part'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* In-App Confirmation Modal: Delete Sale (Bypasses browser iframe confirm blockage) */}
+      {saleToDelete && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full border border-slate-200 overflow-hidden">
+            <div className="p-5 border-b border-slate-100 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-base text-slate-900">Void & Delete Transaction?</h3>
+                <p className="text-xs text-slate-500">Remove sale from the transaction audit log.</p>
+              </div>
+            </div>
+
+            <div className="p-5 bg-slate-50 text-xs text-slate-700 space-y-3">
+              <div className="p-3.5 bg-white rounded-lg border border-slate-200 space-y-1">
+                <div className="font-bold text-slate-900 font-mono text-sm">
+                  Receipt: #{saleToDelete.id.slice(-6).toUpperCase()}
+                </div>
+                <div className="text-slate-700">
+                  Total: <strong className="text-emerald-700 font-mono">KES {saleToDelete.totalKes.toLocaleString()}</strong> ({saleToDelete.paymentMethod})
+                </div>
+                <div className="text-slate-500 text-[11px]">
+                  Date: {new Date(saleToDelete.timestamp).toLocaleString()}
+                </div>
+              </div>
+              <p className="text-slate-500 text-[11px]">
+                Are you sure you want to permanently delete this sales audit record?
+              </p>
+            </div>
+
+            <div className="p-4 bg-white border-t border-slate-100 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setSaleToDelete(null)}
+                className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50 cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={confirmDeleteSale}
+                className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{isDeleting ? 'Deleting...' : 'Delete Transaction'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -1,6 +1,5 @@
 import React from 'react';
 import { 
-  Wrench, 
   Search, 
   Cart3 as ShoppingCart, 
   Whatsapp as MessageCircle, 
@@ -68,9 +67,12 @@ export const JoyDevineHeader: React.FC<JoyDevineHeaderProps> = ({
           
           {/* Brand Logo & Name */}
           <div className="flex items-center gap-2 sm:gap-2.5 select-none shrink-0">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-[#0A192F] flex items-center justify-center text-white shadow-xs shrink-0">
-              <Wrench className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" />
-            </div>
+            <img 
+              src="/joydevine-logo.png" 
+              alt="JoyDevine Auto Spares" 
+              className="w-9 h-9 sm:w-11 sm:h-11 object-contain rounded-full border border-blue-900/10 shadow-xs shrink-0"
+              referrerPolicy="no-referrer"
+            />
             <div>
               <div className="flex items-center gap-1 sm:gap-1.5 leading-none">
                 <span className="font-black text-sm sm:text-lg md:text-xl tracking-tight text-[#0A192F] font-['Chivo']">
@@ -94,7 +96,7 @@ export const JoyDevineHeader: React.FC<JoyDevineHeaderProps> = ({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
-                placeholder="Search by part name, YB No, OEM, or description..."
+                placeholder="Search spare parts by name (e.g. Brake Master, Wheel Cylinder), YB No, OEM, or car model..."
                 className="w-full pl-9 pr-8 py-2 bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 focus:border-blue-700 rounded-lg text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-700/10 transition-all"
               />
               {searchQuery && (
@@ -112,17 +114,6 @@ export const JoyDevineHeader: React.FC<JoyDevineHeaderProps> = ({
           {/* Header Action Controls */}
           <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             
-            {/* Direct Call Button */}
-            <a 
-              href={`tel:${PRIMARY_PHONE_TEL}`}
-              className="bg-slate-100 hover:bg-slate-200 text-[#0A192F] font-bold text-xs px-2 sm:px-3 py-2 rounded-lg flex items-center gap-1.5 transition-colors border border-slate-300 min-h-[38px]"
-              title={`Call Direct: ${PRIMARY_PHONE_DISPLAY}`}
-            >
-              <Phone className="w-3.5 h-3.5 text-blue-700" />
-              <span className="hidden xl:inline font-mono">{PRIMARY_PHONE_DISPLAY}</span>
-              <span className="xl:hidden text-[11px] font-semibold">Call</span>
-            </a>
-
             {/* WhatsApp Contact */}
             <a 
               href={`https://wa.me/${PRIMARY_WHATSAPP_PHONE}?text=${encodeURIComponent('Hello JoyDivine Auto Spares, I am inquiring about spare parts at Kirinyaga Crescent (opp. Seventies Plaza).')}`}
@@ -174,7 +165,7 @@ export const JoyDevineHeader: React.FC<JoyDevineHeaderProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
-              placeholder="Search by YB No, OEM, or part name..."
+              placeholder="Search by part name (e.g. Brake Master), YB No, OEM..."
               className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-blue-700"
             />
             {searchQuery && (

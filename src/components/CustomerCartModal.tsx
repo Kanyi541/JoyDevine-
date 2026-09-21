@@ -4,7 +4,6 @@ import {
   Trash3 as Trash2, 
   Whatsapp as MessageCircle, 
   GeoAltFill as MapPin, 
-  TelephoneFill as Phone, 
   Truck, 
   Shop as Store, 
   CheckCircleFill as CheckCircle2, 
@@ -15,8 +14,6 @@ import { AutoPart } from '../types';
 import { 
   PRIMARY_WHATSAPP_PHONE, 
   PRIMARY_PHONE_DISPLAY,
-  PRIMARY_PHONE_TEL,
-  SECONDARY_PHONE_1_DISPLAY,
   getPublicImageUrlForWhatsApp 
 } from '../services/whatsappService';
 
@@ -350,20 +347,7 @@ export const CustomerCartModal: React.FC<CustomerCartModalProps> = ({
               <span>Send Order to WhatsApp ({PRIMARY_PHONE_DISPLAY})</span>
             </button>
 
-            <div className="flex items-center justify-center gap-2 text-xs text-slate-600 pt-1">
-              <span>Prefer to call?</span>
-              <a 
-                href={`tel:${PRIMARY_PHONE_TEL}`}
-                className="font-bold text-blue-800 hover:text-blue-950 font-mono inline-flex items-center gap-1"
-              >
-                <Phone className="w-3 h-3 text-emerald-600" />
-                <span>{PRIMARY_PHONE_DISPLAY}</span>
-              </a>
-              <span className="text-slate-400">•</span>
-              <span className="font-mono text-[11px] text-slate-500">{SECONDARY_PHONE_1_DISPLAY}</span>
-            </div>
-
-            <p className="text-[11px] text-center text-slate-500">
+            <p className="text-[11px] text-center text-slate-500 pt-1">
               Orders are confirmed immediately at Room B13, Kirinyaga Crescent, opposite Seventies Plaza. M-Pesa Buy Goods & Cash supported.
             </p>
 

@@ -1,0 +1,27 @@
+User-agent: *
+Allow: /
+Disallow: /pos
+Disallow: /admin
+
+# Googlebot specific directives
+User-agent: Googlebot
+Allow: /
+Disallow: /pos
+Disallow: /admin
+
+# Googlebot-Image
+User-agent: Googlebot-Image
+Allow: /productsimg/
+Allow: /assets/
+
+# AI Search Crawlers (Perplexity, ChatGPT, Claude)
+User-agent: GPTBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+Sitemap: https://joydivineautospares.co.ke/sitemap.xml

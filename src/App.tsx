@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { JoyDevineHeader } from './components/JoyDevineHeader';
 import { CustomerCatalog } from './components/CustomerCatalog';
+import { CustomerAiDirectorySection } from './components/CustomerAiDirectorySection';
+import { MobileCustomerActionBar } from './components/MobileCustomerActionBar';
+import { SeoStructuredData } from './components/SeoStructuredData';
 import { ProductDetailModal } from './components/ProductDetailModal';
 import { CustomerCartModal, CartItem } from './components/CustomerCartModal';
 import { LocationAndContactSection } from './components/LocationAndContactSection';
@@ -169,6 +172,9 @@ export const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-['Plus_Jakarta_Sans'] selection:bg-[#0A192F] selection:text-white">
       
+      {/* Dynamic SEO, OpenGraph & AI Search Engine Structured Data Injection */}
+      <SeoStructuredData parts={parts} searchQuery={searchQuery} />
+
       {/* Universal Header with Navigation, WhatsApp, Cart, and Live Search */}
       <JoyDevineHeader
         searchQuery={searchQuery}
@@ -185,13 +191,27 @@ export const App: React.FC = () => {
         <CustomerCatalog
           parts={parts}
           searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
           onAddToCart={handleAddToCart}
           onQuickView={(part) => setSelectedPartForModal(part)}
+        />
+
+        {/* Customer Trust, WhatsApp Photo Quote & AI Crawlable Directory Section */}
+        <CustomerAiDirectorySection
+          parts={parts}
+          onSelectPart={(part) => setSelectedPartForModal(part)}
+          onFilterCategory={(cat) => setSearchQuery(cat === 'All Parts' ? '' : cat)}
         />
 
         {/* Kirinyaga Road Location, Map, and Contacts */}
         <LocationAndContactSection />
       </main>
+
+      {/* Mobile Sticky Quick Action Dock (Call, Photo Quote, Cart) */}
+      <MobileCustomerActionBar
+        cartCount={cartItemsCount}
+        onOpenCart={() => setIsCartOpen(true)}
+      />
 
       {/* Technical Specs Modal */}
       <ProductDetailModal
@@ -211,20 +231,30 @@ export const App: React.FC = () => {
       />
 
       {/* Footer: Deep Navy Blue & White */}
-      <footer className="bg-[#0A192F] text-slate-300 border-t border-[#14284B] py-10 px-4 sm:px-6 lg:px-8 text-xs">
+      <footer className="bg-[#0A192F] text-slate-300 border-t border-[#14284B] py-10 pb-24 md:pb-10 px-4 sm:px-6 lg:px-8 text-xs">
         <div className="max-w-7xl mx-auto space-y-8">
           
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             
             {/* Col 1: Brand & Physical Room */}
             <div className="md:col-span-2 space-y-3">
-              <div className="flex items-center gap-2">
-                <span className="font-black text-lg text-white font-['Chivo'] tracking-tight">
-                  JOYDIVINE AUTO SPARES
-                </span>
-                <span className="text-[10px] bg-white text-[#0A192F] px-1.5 py-0.5 rounded font-mono font-black">
-                  ROOM B13
-                </span>
+              <div className="flex items-center gap-2.5">
+                <img 
+                  src="/joydevine-logo.png" 
+                  alt="JoyDivine Auto Spares Logo" 
+                  className="w-10 h-10 object-contain rounded-full border border-blue-400/30 shadow-xs shrink-0 bg-white"
+                  referrerPolicy="no-referrer"
+                />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-black text-lg text-white font-['Chivo'] tracking-tight">
+                      JOYDIVINE AUTO SPARES
+                    </span>
+                    <span className="text-[10px] bg-white text-[#0A192F] px-1.5 py-0.5 rounded font-mono font-black">
+                      ROOM B13
+                    </span>
+                  </div>
+                </div>
               </div>
               <p className="text-slate-400 text-xs leading-relaxed max-w-md">
                 Direct importer and counter retailer of genuine brake wheel cylinders, hydraulic master cylinders, heavy-duty shock boots, brake hoses, and control cables in Nairobi Central Business District.
@@ -285,17 +315,10 @@ export const App: React.FC = () => {
             <div>
               © {new Date().getFullYear()} JoyDivine Auto Spares. All rights reserved. Kirinyaga Crescent, opposite Seventies Plaza, Nairobi.
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <span>Genuine Auto Spares Nairobi</span>
               <span>•</span>
               <span>Room B13 Kirinyaga Crescent</span>
-              <span>•</span>
-              <button
-                onClick={handleOpenPOS}
-                className="text-slate-400 hover:text-blue-300 font-mono text-[11px] underline cursor-pointer transition-colors"
-              >
-                Staff POS Portal
-              </button>
             </div>
           </div>
 

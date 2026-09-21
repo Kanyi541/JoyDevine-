@@ -49,6 +49,11 @@ export const POSUserManagement: React.FC<POSUserManagementProps> = ({ currentUse
   const [resetError, setResetError] = useState('');
   const [resetSuccess, setResetSuccess] = useState('');
 
+  // Delete User Confirmation Modal State
+  const [userToDelete, setUserToDelete] = useState<POSUser | null>(null);
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
+
   // Subscribe to real-time users from Firestore
   useEffect(() => {
     const unsub = subscribeToPOSUsers((userList) => {
@@ -98,20 +103,31 @@ export const POSUserManagement: React.FC<POSUserManagementProps> = ({ currentUse
 
   const handleToggleActive = async (user: POSUser) => {
     if (user.username.toLowerCase() === 'devine2026') {
-      alert('The primary Admin account cannot be deactivated.');
+      setActionNotice('The primary Admin account cannot be deactivated.');
+      setTimeout(() => setActionNotice(null), 3000);
       return;
     }
     const nextStatus = !user.isActive;
     await updatePOSUser(user.id, { isActive: nextStatus });
   };
 
-  const handleDelete = async (user: POSUser) => {
+  const handleDelete = (user: POSUser) => {
     if (user.username.toLowerCase() === 'devine2026') {
-      alert('The primary Admin account cannot be deleted.');
+      setActionNotice('The primary Admin account cannot be deleted.');
+      setTimeout(() => setActionNotice(null), 3000);
       return;
     }
-    if (confirm(`Are you sure you want to permanently delete user "${user.displayName} (${user.username})"?`)) {
-      await deletePOSUser(user.id);
+    setUserToDelete(user);
+  };
+
+  const confirmDeleteUser = async () => {
+    if (!userToDelete) return;
+    setIsDeletingUser(true);
+    try {
+      await deletePOSUser(userToDelete.id);
+    } finally {
+      setIsDeletingUser(false);
+      setUserToDelete(null);
     }
   };
 
@@ -598,13 +614,13 @@ export const POSUserManagement: React.FC<POSUserManagementProps> = ({ currentUse
                 <button
                   type="button"
                   onClick={() => setShowResetPassModal(null)}
-                  className="px-3 py-1.5 border border-slate-300 text-slate-700 rounded-lg text-xs font-bold"
+                  className="px-3 py-1.5 border border-slate-300 text-slate-700 rounded-lg text-xs font-bold cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-[#0A192F] text-white rounded-lg text-xs font-bold"
+                  className="px-4 py-1.5 bg-[#0A192F] text-white rounded-lg text-xs font-bold cursor-pointer"
                 >
                   Update Password
                 </button>
@@ -612,6 +628,60 @@ export const POSUserManagement: React.FC<POSUserManagementProps> = ({ currentUse
             </form>
 
           </div>
+        </div>
+      )}
+
+      {/* Delete User Confirmation Modal */}
+      {userToDelete && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full border border-slate-200 overflow-hidden">
+            <div className="p-5 border-b border-slate-100 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-base text-slate-900">Delete Staff Account?</h3>
+                <p className="text-xs text-slate-500">Permanently revoke this user's POS access.</p>
+              </div>
+            </div>
+
+            <div className="p-5 bg-slate-50 text-xs text-slate-700 space-y-2">
+              <div className="p-3 bg-white rounded-lg border border-slate-200">
+                <div className="font-bold text-slate-900 text-sm">{userToDelete.displayName}</div>
+                <div className="font-mono text-slate-500 mt-0.5">@{userToDelete.username} • Role: {userToDelete.role.toUpperCase()}</div>
+              </div>
+              <p className="text-slate-500 text-[11px]">
+                Are you sure you want to permanently remove this user from JoyDivine POS?
+              </p>
+            </div>
+
+            <div className="p-4 bg-white border-t border-slate-100 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                disabled={isDeletingUser}
+                onClick={() => setUserToDelete(null)}
+                className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50 cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingUser}
+                onClick={confirmDeleteUser}
+                className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{isDeletingUser ? 'Deleting...' : 'Delete User'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notice Banner */}
+      {actionNotice && (
+        <div className="fixed bottom-4 right-4 z-50 p-3 bg-slate-900 text-white text-xs font-semibold rounded-lg shadow-lg border border-slate-700 animate-in fade-in">
+          {actionNotice}
         </div>
       )}
 
