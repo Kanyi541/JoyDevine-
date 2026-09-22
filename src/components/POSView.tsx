@@ -437,7 +437,7 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
   const handleSavePart = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!itemName.trim() || !ybNo.trim() || !oem.trim() || !des.trim() || priceKes === '') {
-      alert('Please fill all mandatory fields: Item Name, YB No, OEM, Product Description (DES), and Selling Price.');
+      alert('Please fill all mandatory fields: Item Name, YB No, Part Number, Product Description (DES), and Selling Price.');
       return;
     }
 
@@ -451,7 +451,7 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
         oem: oem.trim().toUpperCase(),
         des: des.trim(),
         category,
-        brand: 'JoyDivine / OEM',
+        brand: 'JoyDivine / Part Number',
         priceKes: Number(priceKes),
         buyingPriceKes: buyingPriceKes !== '' ? Number(buyingPriceKes) : undefined,
         stock: stock !== '' ? Number(stock) : 0,
@@ -1970,7 +1970,7 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
 
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-1">
-                        OEM Code *
+                        Part Number *
                       </label>
                       <input
                         type="text"

@@ -70,7 +70,7 @@ export function buildWhatsAppPartOrderUrl(part: AutoPart): string {
     `━━━━━━━━━━━━━━━━━━━━━━━━`,
     `• *Item:* ${part.itemName}`,
     `• *YB Number:* ${part.ybNo}`,
-    `• *OEM Code:* ${part.oem}`,
+    `• *Part Number:* ${part.oem}`,
     `• *Price:* KES ${part.priceKes.toLocaleString()}`,
     part.des ? `• *Application:* ${part.des}` : '',
     `• *Condition:* ${part.condition || 'Brand New'}`,
@@ -130,7 +130,7 @@ export function buildWhatsAppCartOrderUrl(
   items.forEach((item, index) => {
     lines.push(
       `${index + 1}. *${item.part.itemName}*`,
-      `   • YB No: ${item.part.ybNo} | OEM: ${item.part.oem}`,
+      `   • YB No: ${item.part.ybNo} | Part Number: ${item.part.oem}`,
       `   • Qty: ${item.quantity} x KES ${item.part.priceKes.toLocaleString()} = KES ${(
         item.part.priceKes * item.quantity
       ).toLocaleString()}`

@@ -7,7 +7,7 @@
         "id": { "type": "string", "description": "Unique part ID" },
         "itemName": { "type": "string", "description": "Name of the component" },
         "ybNo": { "type": "string", "description": "JoyDevine catalog YB Number" },
-        "oem": { "type": "string", "description": "Original Equipment Manufacturer code" },
+        "oem": { "type": "string", "description": "Part Number" },
         "des": { "type": "string", "description": "Product Description and vehicle compatibility" },
         "category": { "type": "string", "description": "Category name" },
         "brand": { "type": "string", "description": "Brand or manufacturer" },
@@ -18,6 +18,7 @@
         "location": { "type": "string", "description": "Physical shelf location in Room B13" },
         "condition": { "type": "string", "description": "Condition e.g. Brand New" },
         "imageUrl": { "type": "string", "description": "Public URL for part photo" },
+        "deletedAt": { "type": "string", "description": "Timestamp for deletion, for trash management" },
         "createdAt": { "type": "string", "description": "Creation timestamp" },
         "updatedAt": { "type": "string", "description": "Update timestamp" }
       }

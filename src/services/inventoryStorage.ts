@@ -404,18 +404,18 @@ export const batchSaveParts = async (partsData: Array<Omit<AutoPart, 'id' | 'cre
  * Delete part from both Firestore and local state
  */
 export const deletePart = async (id: string): Promise<void> => {
-  const parts = getStoredParts().filter(p => p.id !== id);
+  const parts = getStoredParts().map(p => p.id === id ? {...p, deletedAt: new Date().toISOString()} : p);
   cachedParts = [...parts];
   localStorage.setItem(PARTS_KEY, JSON.stringify(parts));
   notifyParts(cachedParts, dbStatus.isConnected);
 
   try {
     const partRef = doc(db, 'parts', id);
-    await deleteDoc(partRef);
+    await updateDoc(partRef, { deletedAt: new Date().toISOString() });
     dbStatus.lastSyncTime = new Date().toLocaleTimeString();
     notifyStatus();
   } catch (err) {
-    console.warn('Failed deleting part from Firestore (deleted locally):', err);
+    console.warn('Failed marking part as deleted on Firestore:', err);
   }
 };
 

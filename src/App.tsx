@@ -8,6 +8,7 @@ import { ProductDetailModal } from './components/ProductDetailModal';
 import { CustomerCartModal, CartItem } from './components/CustomerCartModal';
 import { LocationAndContactSection } from './components/LocationAndContactSection';
 import { POSView } from './components/POSView';
+import LoadingScreen from './components/LoadingScreen';
 import { AutoPart } from './types';
 import { 
   PRIMARY_PHONE_DISPLAY, 
@@ -49,6 +50,7 @@ export const App: React.FC = () => {
   const [selectedPartForModal, setSelectedPartForModal] = useState<AutoPart | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isFirebaseConnected, setIsFirebaseConnected] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Cart State (Persisted in LocalStorage)
   const [cartItems, setCartItems] = useState<CartItem[]>(() => {
@@ -155,6 +157,17 @@ export const App: React.FC = () => {
   );
 
   const cartItemsCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
 
   // If URL route is /pos, show POS View exclusively with its own management header
   if (isPOSView) {
