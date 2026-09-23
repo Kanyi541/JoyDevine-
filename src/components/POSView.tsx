@@ -2144,6 +2144,7 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                                 id="pos-product-image-upload-replace"
                                 type="file"
                                 accept="image/*"
+                                capture="environment"
                                 onChange={handleImageFileUpload}
                                 disabled={isUploadingImage}
                                 className="hidden"
@@ -2174,6 +2175,7 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                               id="pos-product-image-upload"
                               type="file"
                               accept="image/*"
+                              capture="environment"
                               onChange={handleImageFileUpload}
                               disabled={isUploadingImage}
                               className="hidden"
@@ -2810,6 +2812,7 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                     id="modal-upload-input"
                     type="file"
                     accept="image/*"
+                    capture="environment"
                     onChange={async (e) => {
                       await handleImageFileUpload(e);
                     }}
