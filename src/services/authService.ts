@@ -8,7 +8,8 @@ import {
   deleteDoc, 
   onSnapshot 
 } from 'firebase/firestore';
-import { db } from './firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { db, auth } from './firebase';
 import { POSUser, UserRole } from '../types';
 
 const POS_USERS_COLLECTION = 'posUsers';
@@ -289,6 +290,23 @@ export async function authenticatePOS(
   // First check direct Admin credentials (Devine2026 with Devine2026 or joydevine2026)
   const isDirectAdminUsername = cleanUsername.toLowerCase() === 'devine2026';
   const isDirectAdminPass = cleanPassword === 'Devine2026' || cleanPassword === 'joydevine2026';
+  
+  if (isDirectAdminUsername && isDirectAdminPass) {
+    savePOSSession(DEFAULT_ADMIN_USER);
+    ensureDefaultAdminExists().catch(() => {});
+    return { success: true, user: DEFAULT_ADMIN_USER };
+  }
+
+  // Try Firebase Authentication
+  try {
+    const email = `${cleanUsername.toLowerCase()}@pos.joydevine.com`;
+    await signInWithEmailAndPassword(auth, email, cleanPassword);
+  } catch (error) {
+    console.warn('Firebase Auth failed, checking local fallback:', error);
+    // If Firebase Auth fails, maybe it's not set up for this user yet
+    // For now, let's keep the old password verification as fallback for existing users
+    // who haven't been migrated yet.
+  }
 
   // Fetch or refresh users list
   let users = cachedPOSUsers.length > 0 ? cachedPOSUsers : await fetchPOSUsers();
@@ -307,8 +325,7 @@ export async function authenticatePOS(
     }
 
     // Verify password (or allow master admin bypass for Devine2026)
-    const matches = user.password === cleanPassword || 
-      (isDirectAdminUsername && isDirectAdminPass);
+    const matches = user.password === cleanPassword;
 
     if (matches) {
       const updatedUser: POSUser = {
@@ -326,17 +343,9 @@ export async function authenticatePOS(
     }
   }
 
-  // If user not found in database, but typed Devine2026 admin credentials
-  if (isDirectAdminUsername && isDirectAdminPass) {
-    savePOSSession(DEFAULT_ADMIN_USER);
-    // Asynchronously ensure it's saved to Firestore
-    ensureDefaultAdminExists().catch(() => {});
-    return { success: true, user: DEFAULT_ADMIN_USER };
-  }
-
   return { 
     success: false, 
-    message: `User "${cleanUsername}" was not found. Contact Admin (Devine2026) to add your account.` 
+    message: `User "${cleanUsername}" was not found.` 
   };
 }
 

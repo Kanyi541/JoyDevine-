@@ -8,6 +8,7 @@ import {
   setDoc, 
   deleteDoc, 
   updateDoc, 
+  addDoc,
   query, 
   orderBy, 
   limit,
@@ -426,14 +427,16 @@ export const batchSaveParts = async (partsData: Array<Omit<AutoPart, 'id' | 'cre
  * Delete part from both Firestore and local state
  */
 export const deletePart = async (id: string): Promise<void> => {
-  const parts = getStoredParts().filter(p => p.id !== id);
-  cachedParts = [...parts];
-  localStorage.setItem(PARTS_KEY, JSON.stringify(parts));
+  const parts = getStoredParts();
+  const partToTrash = parts.find(p => p.id === id);
+  const updatedParts = parts.filter(p => p.id !== id);
+  
+  cachedParts = [...updatedParts];
+  localStorage.setItem(PARTS_KEY, JSON.stringify(updatedParts));
   notifyParts(cachedParts, dbStatus.isConnected);
 
   try {
     const partRef = doc(db, 'parts', id);
-    const partToTrash = getStoredParts().find(p => p.id === id);
     if (partToTrash) {
       const trashRef = collection(db, 'trash');
       await addDoc(trashRef, {

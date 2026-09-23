@@ -51,6 +51,7 @@ export type UserRole = 'admin' | 'cashier';
 export interface POSUser {
   id: string;
   username: string; // e.g. "Devine2026"
+  email: string; // Firebase Auth email
   displayName: string;
   password: string; // password credential stored in posUsers in Firestore
   role: UserRole;
