@@ -8,8 +8,7 @@ import {
   deleteDoc, 
   onSnapshot 
 } from 'firebase/firestore';
-import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { db, auth } from './firebase';
+import { db } from './firebase';
 import { POSUser, UserRole } from '../types';
 
 const POS_USERS_COLLECTION = 'posUsers';
@@ -20,7 +19,6 @@ const LOCAL_USERS_BACKUP_KEY = 'joydevine_pos_users_cache_v2';
 export const DEFAULT_ADMIN_USER: POSUser = {
   id: 'admin_devine2026',
   username: 'Devine2026',
-  email: 'admin@devine.com',
   displayName: 'Joy Devine (Admin)',
   password: 'Devine2026',
   role: 'admin',
@@ -161,36 +159,32 @@ export async function fetchPOSUsers(): Promise<POSUser[]> {
  */
 export async function createPOSUser(userData: {
   username: string;
-  email: string;
   displayName: string;
   password: string;
   role: UserRole;
   createdBy: string;
 }): Promise<{ success: boolean; message?: string; user?: POSUser }> {
   const cleanUsername = userData.username.trim();
-  const cleanEmail = userData.email.trim();
-  if (!cleanUsername || !cleanEmail) {
-    return { success: false, message: 'Username and email are required.' };
+  if (!cleanUsername) {
+    return { success: false, message: 'Username is required.' };
   }
   if (!userData.password || userData.password.length < 4) {
     return { success: false, message: 'Password must be at least 4 characters.' };
   }
 
-  // Check for duplicate username or email
+  // Check for duplicate username
   const currentUsers = await fetchPOSUsers();
   const duplicate = currentUsers.find(
-    (u) => u.username.toLowerCase() === cleanUsername.toLowerCase() || 
-           u.email.toLowerCase() === cleanEmail.toLowerCase()
+    (u) => u.username.toLowerCase() === cleanUsername.toLowerCase()
   );
   if (duplicate) {
-    return { success: false, message: `Username or email is already taken.` };
+    return { success: false, message: `Username "${cleanUsername}" is already taken.` };
   }
 
   const newId = `user_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   const newUser: POSUser = {
     id: newId,
     username: cleanUsername,
-    email: cleanEmail,
     displayName: userData.displayName.trim() || cleanUsername,
     password: userData.password,
     role: userData.role,
@@ -279,58 +273,71 @@ export async function deletePOSUser(userId: string): Promise<{ success: boolean;
  * Authenticate POS user with Username and Password
  */
 export async function authenticatePOS(
-  emailInput: string,
+  usernameInput: string,
   passwordInput: string
 ): Promise<{ success: boolean; user?: POSUser; message?: string }> {
-  const cleanEmail = emailInput.trim().toLowerCase();
+  const cleanUsername = usernameInput.trim();
   const cleanPassword = passwordInput.trim();
 
-  if (!cleanEmail) {
-    return { success: false, message: 'Please enter your email.' };
+  if (!cleanUsername) {
+    return { success: false, message: 'Please enter your username.' };
   }
   if (!cleanPassword) {
     return { success: false, message: 'Please enter your password.' };
   }
 
-  try {
-    // 1. Sign in with Firebase Auth
-    await signInWithEmailAndPassword(auth, cleanEmail, cleanPassword);
+  // First check direct Admin credentials (Devine2026 with Devine2026 or joydevine2026)
+  const isDirectAdminUsername = cleanUsername.toLowerCase() === 'devine2026';
+  const isDirectAdminPass = cleanPassword === 'Devine2026' || cleanPassword === 'joydevine2026';
 
-    // 2. Fetch users to verify account and retrieve POSUser record
-    let users = cachedPOSUsers.length > 0 ? cachedPOSUsers : await fetchPOSUsers();
-    const user = users.find(
-      (u) => u.email.toLowerCase() === cleanEmail
-    );
+  // Fetch or refresh users list
+  let users = cachedPOSUsers.length > 0 ? cachedPOSUsers : await fetchPOSUsers();
 
-    if (user) {
-      // Check if account is deactivated
-      if (user.isActive === false) {
-        await signOut(auth); // Sign out if account is inactive
-        return { 
-          success: false, 
-          message: 'This user account has been deactivated by the Administrator. Please contact Joy Devine.' 
-        };
-      }
+  const user = users.find(
+    (u) => u.username.toLowerCase() === cleanUsername.toLowerCase()
+  );
 
+  if (user) {
+    // Check if account is deactivated
+    if (user.isActive === false) {
+      return { 
+        success: false, 
+        message: 'This user account has been deactivated by the Administrator. Please contact Joy Devine.' 
+      };
+    }
+
+    // Verify password (or allow master admin bypass for Devine2026)
+    const matches = user.password === cleanPassword || 
+      (isDirectAdminUsername && isDirectAdminPass);
+
+    if (matches) {
       const updatedUser: POSUser = {
         ...user,
         lastLoginAt: new Date().toISOString(),
       };
       
       savePOSSession(updatedUser);
+      // Asynchronously update last login
       updatePOSUser(user.id, { lastLoginAt: updatedUser.lastLoginAt }).catch(() => {});
 
       return { success: true, user: updatedUser };
+    } else {
+      return { success: false, message: 'Incorrect password. Please try again.' };
     }
-
-    return { 
-      success: false, 
-      message: `User with email "${cleanEmail}" was not found.` 
-    };
-  } catch (err: any) {
-    console.error('Auth error:', err);
-    return { success: false, message: 'Invalid email or password.' };
   }
+
+  // If user not found in database, but typed Devine2026 admin credentials
+  if (isDirectAdminUsername && isDirectAdminPass) {
+    savePOSSession(DEFAULT_ADMIN_USER);
+    // Asynchronously ensure it's saved to Firestore
+    ensureDefaultAdminExists().catch(() => {});
+    return { success: true, user: DEFAULT_ADMIN_USER };
+  }
+
+  return { 
+    success: false, 
+    message: `User "${cleanUsername}" was not found. Contact Admin (Devine2026) to add your account.` 
+  };
 }
 
 /**

@@ -20,6 +20,7 @@ const SALES_KEY = 'joydevine_pos_sales_v2';
 const IMAGES_KEY = 'joydevine_images_memory_v2';
 const AUTH_KEY = 'joydevine_pos_auth_v1';
 const PASSWORD_KEY = 'joydevine_pos_pass_v1';
+const DEFAULT_PASSWORD = 'joydevine2026';
 
 // Clean up previous dummy data and old cache keys if present
 try {
@@ -677,8 +678,7 @@ export const setAdminAuth = (authenticated: boolean): void => {
 };
 
 export const verifyAdminPassword = (password: string): boolean => {
-  const stored = localStorage.getItem(PASSWORD_KEY);
-  if (!stored) return false;
+  const stored = localStorage.getItem(PASSWORD_KEY) || DEFAULT_PASSWORD;
   return password.trim() === stored.trim();
 };
 

@@ -1,23 +1,24 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Inventory Parts: Readable by all, writable only by authenticated
+    // Inventory Parts collection: readable by all visitors for storefront, writable for inventory updates
     match /parts/{partId} {
-      allow read: if true;
-      allow write: if request.auth != null;
+      allow read, write: if true;
     }
 
-    // POS Sales Records & Users: Only accessible by authenticated users
+    // POS Sales Records: readable and writable for store operations
     match /sales/{saleId} {
-      allow read, write: if request.auth != null;
-    }
-    match /posUsers/{userId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if true;
     }
 
-    // Default deny for other collections
-    match /{document=**} {
-      allow read, write: if false;
+    // Image memory cache: readable and writable
+    match /imageMemory/{memoryId} {
+      allow read, write: if true;
+    }
+
+    // POS Users: Staff and admin accounts
+    match /posUsers/{userId} {
+      allow read, write: if true;
     }
   }
 }
