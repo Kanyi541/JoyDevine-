@@ -22,6 +22,7 @@
     "react": "^19.0.1",
     "react-bootstrap-icons": "^1.11.6",
     "react-dom": "^19.0.1",
+    "react-hot-toast": "^2.6.1",
     "vite": "^8.3.0"
   },
   "devDependencies": {

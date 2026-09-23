@@ -63,7 +63,7 @@ export const CustomerAiDirectorySection: React.FC<CustomerAiDirectorySectionProp
     },
     {
       q: 'How can I confirm if a part fits my car or cross-reference my OEM code?',
-      a: 'You can check our online search using your OEM number or vehicle model, or simply snap a clear photo of your old part or vehicle chassis number and send it to our WhatsApp hotline (0111 871 428). Our Kirinyaga desk counter staff will verify exact fitment in under 5 minutes.'
+      a: 'You can check our online search using your part number or vehicle model, or simply snap a clear photo of your old part or vehicle chassis number and send it to our WhatsApp hotline (0111 871 428). Our Kirinyaga desk counter staff will verify exact fitment in under 5 minutes.'
     },
     {
       q: 'Do you offer countrywide parcel delivery to garages across Kenya?',

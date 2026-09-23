@@ -96,7 +96,7 @@ export const JoyDevineHeader: React.FC<JoyDevineHeaderProps> = ({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
-                placeholder="Search spare parts by name (e.g. Brake Master, Wheel Cylinder), YB No, OEM, or car model..."
+                placeholder="Search spare parts by name (e.g. Brake Master, Wheel Cylinder), YB No, Part Number, or car model..."
                 className="w-full pl-9 pr-8 py-2 bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 focus:border-blue-700 rounded-lg text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-700/10 transition-all"
               />
               {searchQuery && (

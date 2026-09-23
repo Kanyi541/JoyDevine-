@@ -7,7 +7,7 @@
         "id": { "type": "string", "description": "Unique part ID" },
         "itemName": { "type": "string", "description": "Name of the component" },
         "ybNo": { "type": "string", "description": "JoyDevine catalog YB Number" },
-        "oem": { "type": "string", "description": "Part Number" },
+        "oem": { "type": "string", "description": "Original Equipment Manufacturer code" },
         "des": { "type": "string", "description": "Product Description and vehicle compatibility" },
         "category": { "type": "string", "description": "Category name" },
         "brand": { "type": "string", "description": "Brand or manufacturer" },

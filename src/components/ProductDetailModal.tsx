@@ -129,7 +129,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 </div>
 
                 <div className="flex items-center justify-between pt-1 border-t border-slate-200">
-                  <span className="text-slate-500 font-mono">OEM Code:</span>
+                  <span className="text-slate-500 font-mono">Part Number:</span>
                   <div className="flex items-center gap-1.5 font-mono">
                     <span className="font-bold text-slate-900">{part.oem}</span>
                     <button

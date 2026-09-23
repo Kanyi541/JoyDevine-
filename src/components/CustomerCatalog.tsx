@@ -273,7 +273,7 @@ export const CustomerCatalog: React.FC<CustomerCatalogProps> = ({
                       {part.itemName}
                     </h3>
 
-                    {/* Part Number Row */}
+                    {/* OEM Row */}
                     <div className="flex items-center justify-between text-[10px] py-0.5 px-1.5 bg-slate-50 rounded border border-slate-200 font-mono">
                       <span className="text-slate-500 font-sans font-semibold">Part Number:</span>
                       <div className="flex items-center gap-1 min-w-0">
@@ -281,7 +281,7 @@ export const CustomerCatalog: React.FC<CustomerCatalogProps> = ({
                         <button
                           type="button"
                           onClick={(e) => handleCopyOem(e, part.oem)}
-                          title="Copy Part Number"
+                          title="Copy OEM"
                           className="text-slate-400 hover:text-blue-700 p-0.5 transition-colors cursor-pointer min-w-[20px] min-h-[20px] flex items-center justify-center"
                         >
                           {copiedOem === part.oem ? (

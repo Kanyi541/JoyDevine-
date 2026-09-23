@@ -160,7 +160,7 @@ export const SeoStructuredData: React.FC<SeoStructuredDataProps> = ({
         },
         {
           '@type': 'Question',
-          name: 'How do I check if a spare part fits my car or verify OEM numbers?',
+          name: 'How do I check if a spare part fits my car or verify part numbers?',
           acceptedAnswer: {
             '@type': 'Answer',
             text: 'You can verify fitment by searching your OEM part code or YB number on our website, or by sending your vehicle model, chassis number, or sample part photo on WhatsApp to 0111 871 428 (+254 111 871 428). Our counter technicians verify fitment within 5 minutes.',

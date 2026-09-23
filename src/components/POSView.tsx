@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import toast, { Toaster } from 'react-hot-toast';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Lock, 
   Unlock, 
@@ -437,7 +439,7 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
   const handleSavePart = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!itemName.trim() || !ybNo.trim() || !oem.trim() || !des.trim() || priceKes === '') {
-      alert('Please fill all mandatory fields: Item Name, YB No, Part Number, Product Description (DES), and Selling Price.');
+      alert('Please fill all mandatory fields: Item Name, YB No, OEM, Product Description (DES), and Selling Price.');
       return;
     }
 
@@ -451,7 +453,7 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
         oem: oem.trim().toUpperCase(),
         des: des.trim(),
         category,
-        brand: 'JoyDivine / Part Number',
+        brand: 'JoyDivine / OEM',
         priceKes: Number(priceKes),
         buyingPriceKes: buyingPriceKes !== '' ? Number(buyingPriceKes) : undefined,
         stock: stock !== '' ? Number(stock) : 0,
@@ -607,8 +609,10 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
     try {
       await deletePart(partToDelete.id);
       refreshPartsList();
+      toast.success('Part moved to trash!');
     } catch (err) {
       console.error('Failed to delete part:', err);
+      toast.error('Failed to delete part');
     } finally {
       setIsDeleting(false);
       setPartToDelete(null);
@@ -881,6 +885,7 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
   // Authenticated: Full POS Workspace
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900 pb-16">
+      <Toaster />
       
       {/* Top POS Management Bar: Deep Navy Blue */}
       <div className="bg-[#0A192F] text-white border-b border-[#14284B] px-4 sm:px-6 lg:px-8 py-3 shadow-sm">
@@ -1113,11 +1118,19 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                       return matchesCat && terms.every((term) => searchable.includes(term));
                     })
                     .map((part) => (
-                      <div
+                      <motion.div
                         key={part.id}
-                        onClick={() => handleAddToTicket(part)}
-                        className="bg-white border border-slate-200 hover:border-blue-700 rounded-xl p-3 flex flex-col justify-between gap-2.5 cursor-pointer shadow-2xs hover:shadow-md transition-all group"
+                        layout
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        transition={{ duration: 0.2 }}
+                        className="contents"
                       >
+                        <div
+                          onClick={() => handleAddToTicket(part)}
+                          className="bg-white border border-slate-200 hover:border-blue-700 rounded-xl p-3 flex flex-col justify-between gap-2.5 cursor-pointer shadow-2xs hover:shadow-md transition-all group"
+                        >
                         <div className="flex gap-3">
                           <div className="w-16 h-16 bg-slate-50 border border-slate-200 rounded-lg p-1 flex items-center justify-center shrink-0 overflow-hidden">
                             {part.imageUrl ? (
@@ -1178,7 +1191,8 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                             </button>
                           </div>
                         </div>
-                      </div>
+                        </div>
+                      </motion.div>
                     ))}
                 </div>
               </div>
@@ -1558,7 +1572,7 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                 <div>
                   <h4 className="font-bold text-amber-950 text-sm">Staff Catalog & Shelf Inventory View</h4>
                   <p className="mt-0.5 text-amber-800">
-                    You are logged in as <strong>{currentUser.displayName} (Cashier)</strong>. You have view access to search parts, check shelf stock, and lookup OEM numbers. Adding new parts, editing prices, and modifying inventory is reserved for the Administrator (<strong>Devine2026</strong>).
+                    You are logged in as <strong>{currentUser.displayName} (Cashier)</strong>. You have view access to search parts, check shelf stock, and lookup part numbers. Adding new parts, editing prices, and modifying inventory is reserved for the Administrator (<strong>Devine2026</strong>).
                   </p>
                 </div>
               </div>
@@ -1970,7 +1984,7 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
 
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Part Number *
+                        OEM Code *
                       </label>
                       <input
                         type="text"

@@ -10,6 +10,8 @@ import {
   updateDoc, 
   query, 
   orderBy, 
+  limit,
+  startAfter,
   onSnapshot 
 } from 'firebase/firestore';
 
@@ -129,6 +131,26 @@ export const subscribeToDatabaseStatus = (listener: StatusListener): (() => void
 /**
  * Initialize real-time synchronization with Google Cloud Firestore
  */
+export const fetchMoreParts = async (lastVisibleDoc: any) => {
+  const partsCol = collection(db, 'parts');
+  const q = query(partsCol, orderBy('itemName'), startAfter(lastVisibleDoc), limit(50));
+  const snapshot = await getDocs(q);
+  
+  const newParts: AutoPart[] = [];
+  snapshot.forEach((docSnap) => {
+    const data = docSnap.data() as AutoPart;
+    newParts.push({
+      ...data,
+      id: data.id || docSnap.id,
+    });
+  });
+  
+  return {
+    parts: newParts,
+    lastVisible: snapshot.docs[snapshot.docs.length - 1]
+  };
+};
+
 export const initFirestoreSync = () => {
   if (firestoreListenerAttached) return;
   firestoreListenerAttached = true;
@@ -137,7 +159,7 @@ export const initFirestoreSync = () => {
   notifyStatus();
 
   try {
-    const q = query(partsCol);
+    const q = query(partsCol, orderBy('itemName'), limit(50));
     onSnapshot(
       q,
       (snapshot) => {
@@ -404,18 +426,26 @@ export const batchSaveParts = async (partsData: Array<Omit<AutoPart, 'id' | 'cre
  * Delete part from both Firestore and local state
  */
 export const deletePart = async (id: string): Promise<void> => {
-  const parts = getStoredParts().map(p => p.id === id ? {...p, deletedAt: new Date().toISOString()} : p);
+  const parts = getStoredParts().filter(p => p.id !== id);
   cachedParts = [...parts];
   localStorage.setItem(PARTS_KEY, JSON.stringify(parts));
   notifyParts(cachedParts, dbStatus.isConnected);
 
   try {
     const partRef = doc(db, 'parts', id);
-    await updateDoc(partRef, { deletedAt: new Date().toISOString() });
+    const partToTrash = getStoredParts().find(p => p.id === id);
+    if (partToTrash) {
+      const trashRef = collection(db, 'trash');
+      await addDoc(trashRef, {
+        ...partToTrash,
+        deletedAt: new Date().toISOString(),
+      });
+    }
+    await deleteDoc(partRef);
     dbStatus.lastSyncTime = new Date().toLocaleTimeString();
     notifyStatus();
   } catch (err) {
-    console.warn('Failed marking part as deleted on Firestore:', err);
+    console.warn('Failed deleting part from Firestore (deleted locally):', err);
   }
 };
 
