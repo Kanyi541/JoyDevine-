@@ -448,7 +448,8 @@ export const deletePart = async (id: string): Promise<void> => {
     dbStatus.lastSyncTime = new Date().toLocaleTimeString();
     notifyStatus();
   } catch (err) {
-    console.warn('Failed deleting part from Firestore (deleted locally):', err);
+    console.error('CRITICAL: Failed deleting part from Firestore:', err);
+    throw err; // Re-throw to inform caller
   }
 };
 
