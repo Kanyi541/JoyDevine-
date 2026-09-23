@@ -1,9 +1,23 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Only allow authenticated users to interact with data
-    match /{document=**} {
+    // Inventory Parts: Readable by all, writable only by authenticated
+    match /parts/{partId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // POS Sales Records & Users: Only accessible by authenticated users
+    match /sales/{saleId} {
       allow read, write: if request.auth != null;
+    }
+    match /posUsers/{userId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Default deny for other collections
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
