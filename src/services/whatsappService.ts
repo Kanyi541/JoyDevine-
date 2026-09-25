@@ -29,12 +29,15 @@ export function getPublicImageUrlForWhatsApp(imageUrl?: string, category?: strin
       : '/productsimg/handbrake-cable.jpg',
   };
 
-  let targetImg = imageUrl || '';
+  // If no image, try to use category fallback
+  let targetImg = imageUrl || categoryFallbackMap[category || ''] || '';
+  
+  if (!targetImg) return '';
 
   // If image is a local base64 data URL (which WhatsApp crawler cannot unfurl), 
-  // return an empty string so the WhatsApp message generator knows to omit the image URL.
+  // return fallback URL so the WhatsApp message still gets a preview card.
   if (targetImg.startsWith('data:')) {
-    return '';
+    return categoryFallbackMap[category || ''] || '';
   }
 
   // If already absolute URL
@@ -76,6 +79,7 @@ export function buildWhatsAppPartOrderUrl(part: AutoPart): string {
     part.des ? `• *Application:* ${part.des}` : '',
     `• *Condition:* ${part.condition || 'Brand New'}`,
     `• *Location:* Kirinyaga Crescent, opposite Seventies Plaza (Room B13), Nairobi`,
+    `• *Photo:* ${photoUrl}`,
     `━━━━━━━━━━━━━━━━━━━━━━━━`,
     `Hello JoyDivine Auto Spares, I would like to order this spare part. Please confirm stock availability and M-Pesa till / dispatch details.`
   ].filter(Boolean);
@@ -129,12 +133,14 @@ export function buildWhatsAppCartOrderUrl(
   ];
 
   items.forEach((item, index) => {
+    const itemPhoto = getPublicImageUrlForWhatsApp(item.part.imageUrl, item.part.category, item.part.ybNo);
     lines.push(
       `${index + 1}. *${item.part.itemName}*`,
       `   • YB No: ${item.part.ybNo} | Part Number: ${item.part.oem}`,
       `   • Qty: ${item.quantity} x KES ${item.part.priceKes.toLocaleString()} = KES ${(
         item.part.priceKes * item.quantity
-      ).toLocaleString()}`
+      ).toLocaleString()}`,
+      `   • Photo: ${itemPhoto}`
     );
   });
 
