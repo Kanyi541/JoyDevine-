@@ -16,6 +16,12 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // URL Redirects: readable for redirection, writable for server-side generation
+    match /urlRedirects/{slug} {
+      allow read: if true;
+      allow write: if true;
+    }
+
     // Trash collection for deleted items
     match /trash/{trashId} {
       allow read, write: if true;

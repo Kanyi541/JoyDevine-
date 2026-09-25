@@ -13,7 +13,7 @@ import {
 } from 'react-bootstrap-icons';
 import { AutoPart } from '../types';
 import { buildWhatsAppPartOrderUrl, PRIMARY_PHONE_DISPLAY } from '../services/whatsappService';
-import { getAbsoluteImageUrl } from '../services/productImageService';
+import { LoadingImage } from './LoadingImage';
 
 interface ProductDetailModalProps {
   part: AutoPart | null;
@@ -73,8 +73,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           <div className="p-4 sm:p-5 bg-slate-50 border-b sm:border-b-0 sm:border-r border-slate-200 flex flex-col justify-between space-y-3">
             <div className="space-y-3">
               <div className="aspect-square bg-white rounded-lg p-3 sm:p-4 border border-slate-200 flex items-center justify-center max-h-64 sm:max-h-none">
-                <img
-                  src={getAbsoluteImageUrl(part.imageUrl)}
+                <LoadingImage
+                  src={part.imageUrl}
                   alt={part.itemName}
                   className="max-h-full max-w-full object-contain"
                 />

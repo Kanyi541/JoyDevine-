@@ -16,6 +16,7 @@ import {
   PRIMARY_PHONE_DISPLAY,
   getPublicImageUrlForWhatsApp 
 } from '../services/whatsappService';
+import { LoadingImage } from './LoadingImage';
 
 export interface CartItem {
   part: AutoPart;
@@ -167,7 +168,7 @@ export const CustomerCartModal: React.FC<CustomerCartModalProps> = ({
                     className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between gap-3"
                   >
                     <div className="w-12 h-12 bg-white rounded border border-slate-200 p-1 flex items-center justify-center shrink-0">
-                      <img
+                      <LoadingImage
                         src={part.imageUrl}
                         alt={part.itemName}
                         className="max-h-full max-w-full object-contain"

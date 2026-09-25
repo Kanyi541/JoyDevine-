@@ -52,6 +52,14 @@
         "addedAt": { "type": "string", "description": "Timestamp" }
       }
     },
+    "urlRedirects": {
+      "title": "URL Shortener Redirects",
+      "description": "Mappings for short URL slugs to long Firebase Storage URLs",
+      "fields": {
+        "longUrl": { "type": "string", "description": "Full Firebase Storage URL" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" }
+      }
+    },
     "posUsers": {
       "title": "POS Staff & Admin Users",
       "description": "Authorized staff and admin credentials for POS terminal operations",
@@ -67,5 +75,12 @@
         "createdBy": { "type": "string", "description": "Username of admin who created user" }
       }
     }
+  },
+  "firestore": {
+    "/parts/{partId}": { "schema": "parts", "description": "Auto parts" },
+    "/sales/{saleId}": { "schema": "sales", "description": "Sales" },
+    "/imageMemory/{imageId}": { "schema": "imageMemory", "description": "Image memory" },
+    "/urlRedirects/{slug}": { "schema": "urlRedirects", "description": "URL Redirects" },
+    "/posUsers/{userId}": { "schema": "posUsers", "description": "POS Users" }
   }
 }
