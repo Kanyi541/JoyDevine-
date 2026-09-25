@@ -1,4 +1,6 @@
 import { CATEGORY_DEFAULT_IMAGES } from '../data/joydevineParts';
+import { storage } from './firebase';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 
 /**
  * Product Image Management Service
@@ -34,11 +36,6 @@ export const PRESET_PRODUCT_IMAGES: ProductImageItem[] = [
 
 /**
  * Automatically compress and optimize any local image file from the device (phone camera, gallery, PC)
- * into a lightweight Base64 string (< 60KB) that syncs directly into Google Cloud Firestore documents.
- * 
- * Firestore documents have a strict 1MB limit. Raw photos (3MB-10MB) will cause Firestore to reject
- * the write with "Document exceeds maximum size". By compressing locally to 650px at 0.75 quality,
- * the file becomes ~35KB-50KB with pristine clarity for spare parts, enabling direct database storage.
  */
 export async function compressLocalImageForDatabase(
   file: File,
@@ -59,7 +56,6 @@ export async function compressLocalImageForDatabase(
         let width = img.naturalWidth || img.width;
         let height = img.naturalHeight || img.height;
 
-        // Scale proportionally if larger than maximum dimension
         if (width > maxDimension || height > maxDimension) {
           if (width > height) {
             height = Math.round((height * maxDimension) / width);
@@ -79,12 +75,10 @@ export async function compressLocalImageForDatabase(
           return reject(new Error('Could not initialize image processing canvas.'));
         }
 
-        // Clean white background for transparency handling
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, width, height);
         ctx.drawImage(img, 0, 0, width, height);
 
-        // Convert to optimized JPEG format
         const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
         const compressedSizeKb = Math.round((compressedBase64.length * 3) / 4 / 1024);
 
@@ -95,7 +89,7 @@ export async function compressLocalImageForDatabase(
           compressedSizeKb,
           width,
           height,
-          isDatabaseReady: compressedSizeKb < 300, // Well within Firestore 1024KB limit
+          isDatabaseReady: compressedSizeKb < 300,
         });
       };
 
@@ -109,13 +103,27 @@ export async function compressLocalImageForDatabase(
 }
 
 /**
- * Upload or process a local device image for direct database synchronization
+ * Uploads a base64 image string to Firebase Storage and returns the public download URL
+ */
+export async function uploadToFirebaseStorage(base64Image: string, path: string): Promise<string> {
+  const storageRef = ref(storage, path);
+  await uploadString(storageRef, base64Image, 'data_url');
+  return await getDownloadURL(storageRef);
+}
+
+/**
+ * Upload or process a local device image for Firebase Storage
  */
 export async function uploadProductImage(file: File): Promise<{ url: string; filename: string; diagnostic?: ImageProcessingResult }> {
   const processed = await compressLocalImageForDatabase(file);
+  
+  // Upload to storage
+  const storagePath = `parts/${Date.now()}_${file.name}`;
+  const publicUrl = await uploadToFirebaseStorage(processed.url, storagePath);
+  
   return {
-    url: processed.url,
-    filename: processed.filename,
+    url: publicUrl,
+    filename: file.name,
     diagnostic: processed,
   };
 }
@@ -130,8 +138,9 @@ export function getCategoryDefaultImage(categoryName: string): string {
 /**
  * Determine the storage type of an image
  */
-export function getImageSourceType(url: string): 'DIRECT_DATABASE' | 'LOCAL_PRESET' | 'WEB_URL' | 'NONE' {
+export function getImageSourceType(url: string): 'DIRECT_STORAGE' | 'LOCAL_PRESET' | 'WEB_URL' | 'NONE' {
   if (!url) return 'NONE';
+  if (url.includes('firebasestorage.googleapis.com')) return 'DIRECT_STORAGE';
   if (url.startsWith('data:image/')) return 'DIRECT_DATABASE';
   if (url.startsWith('/productsimg/')) return 'LOCAL_PRESET';
   if (url.startsWith('http://') || url.startsWith('https://')) return 'WEB_URL';
@@ -158,21 +167,12 @@ export async function fetchAvailableProductImages(): Promise<ProductImageItem[]>
 
 /**
  * Format image URL for WhatsApp link.
- * WhatsApp requires absolute URLs (starting with http/https) to unfurl and display image previews.
  */
 export function formatImageUrlForWhatsApp(imageUrl: string): string {
   if (!imageUrl) return '';
   if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
     return imageUrl;
   }
-  if (imageUrl.startsWith('data:')) {
-    return 'Direct counter photo attached in catalog';
-  }
-  try {
-    const origin = window.location.origin;
-    const cleanPath = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
-    return `${origin}${cleanPath}`;
-  } catch {
-    return imageUrl;
-  }
+  // Base64 images are no longer used for storage, so this fallback can be simplified
+  return '';
 }

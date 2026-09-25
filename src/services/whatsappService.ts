@@ -31,9 +31,10 @@ export function getPublicImageUrlForWhatsApp(imageUrl?: string, category?: strin
 
   let targetImg = imageUrl || '';
 
-  // If image is a local base64 data URL (which WhatsApp crawler cannot unfurl), fall back to public catalog asset
-  if (!targetImg || targetImg.startsWith('data:')) {
-    targetImg = (category && categoryFallbackMap[category]) || '/productsimg/brake-wheel-cylinder.jpg';
+  // If image is a local base64 data URL (which WhatsApp crawler cannot unfurl), 
+  // return an empty string so the WhatsApp message generator knows to omit the image URL.
+  if (targetImg.startsWith('data:')) {
+    return '';
   }
 
   // If already absolute URL
