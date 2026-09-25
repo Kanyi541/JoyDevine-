@@ -65,7 +65,9 @@ import {
   subscribeToDatabaseStatus,
   fetchDirectlyFromFirebase,
   seedFirestoreParts,
-  DatabaseStatus
+  DatabaseStatus,
+  checkMigrationStatus,
+  markMigrationComplete
 } from '../services/inventoryStorage';
 import { 
   uploadProductImage, 
@@ -242,6 +244,8 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
         setMigrationMessage(msg);
         if (progress !== undefined) setMigrationProgress(progress);
       });
+      await markMigrationComplete();
+      setIsMigrationDone(true);
       setMigrationMessage(`✅ Migration complete! ${count} images migrated to Firebase Storage.`);
       refreshPartsList();
     } catch (err: any) {
@@ -251,6 +255,12 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
       setTimeout(() => setMigrationMessage(''), 5000);
     }
   };
+
+  // Check migration status on load
+  const [isMigrationDone, setIsMigrationDone] = useState(false);
+  useEffect(() => {
+    checkMigrationStatus().then(setIsMigrationDone);
+  }, []);
 
   // Drag-and-drop & URL input state
   const [isDraggingOver, setIsDraggingOver] = useState(false);
@@ -2655,13 +2665,20 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
             <POSUserManagement currentUser={currentUser} />
             <div className="p-5 bg-white border border-slate-200 rounded-xl shadow-sm space-y-3">
               <h3 className="font-bold text-sm text-[#0A192F]">Admin Maintenance</h3>
-              <button
-                onClick={handleRunImageMigration}
-                disabled={isMigrating}
-                className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold rounded-lg cursor-pointer disabled:opacity-50"
-              >
-                {isMigrating ? 'Migrating Images...' : 'Migrate All Images to Firebase Storage'}
-              </button>
+              {isMigrationDone ? (
+                <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-800 font-bold">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>Images successfully migrated to Firebase Storage.</span>
+                </div>
+              ) : (
+                <button
+                  onClick={handleRunImageMigration}
+                  disabled={isMigrating}
+                  className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold rounded-lg cursor-pointer disabled:opacity-50"
+                >
+                  {isMigrating ? 'Migrating Images...' : 'Migrate All Images to Firebase Storage'}
+                </button>
+              )}
               {isMigrating && (
                 <div className="mt-4 p-3 bg-slate-50 border border-slate-200 rounded-lg">
                   <p className="text-xs font-medium text-slate-700 mb-2">{migrationMessage}</p>

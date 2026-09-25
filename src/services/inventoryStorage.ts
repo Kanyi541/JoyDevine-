@@ -13,7 +13,8 @@ import {
   orderBy, 
   limit,
   startAfter,
-  onSnapshot 
+  onSnapshot,
+  getDoc
 } from 'firebase/firestore';
 import { uploadToFirebaseStorage } from './productImageService';
 
@@ -333,6 +334,32 @@ export const migrateBase64ToStorage = async (onProgress: (msg: string, progress?
   
   onProgress(`Migration complete. ${completed} images migrated.`, 100);
   return completed;
+};
+
+/**
+ * Check if the image migration has already been completed.
+ */
+export const checkMigrationStatus = async (): Promise<boolean> => {
+  try {
+    const metaRef = doc(db, 'systemMeta', 'imageMigration');
+    const docSnap = await getDoc(metaRef);
+    return docSnap.exists() && docSnap.data().status === 'completed';
+  } catch (err) {
+    console.error('Failed to check migration status:', err);
+    return false;
+  }
+};
+
+/**
+ * Mark the image migration as completed.
+ */
+export const markMigrationComplete = async (): Promise<void> => {
+  try {
+    const metaRef = doc(db, 'systemMeta', 'imageMigration');
+    await setDoc(metaRef, { status: 'completed', completedAt: new Date().toISOString() });
+  } catch (err) {
+    console.error('Failed to mark migration complete:', err);
+  }
 };
 
 /**
