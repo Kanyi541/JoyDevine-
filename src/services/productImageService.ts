@@ -129,6 +129,19 @@ export async function uploadProductImage(file: File): Promise<{ url: string; fil
 }
 
 /**
+ * Resolve any image URL/path to a fully qualified absolute URL for display.
+ */
+export function getAbsoluteImageUrl(url: string): string {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+    return url;
+  }
+  
+  const cleanPath = url.startsWith('/') ? url : `/${url}`;
+  return `https://joydevineautospares.vercel.app${cleanPath}`;
+}
+
+/**
  * Get default image for a category
  */
 export function getCategoryDefaultImage(categoryName: string): string {

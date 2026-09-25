@@ -12,6 +12,7 @@ import {
 } from 'react-bootstrap-icons';
 import { AutoPart } from '../types';
 import { buildWhatsAppPartOrderUrl } from '../services/whatsappService';
+import { getAbsoluteImageUrl } from '../services/productImageService';
 
 interface CustomerCatalogProps {
   parts: AutoPart[];
@@ -231,7 +232,7 @@ export const CustomerCatalog: React.FC<CustomerCatalogProps> = ({
                       </div>
                     ) : (
                       <img
-                        src={part.imageUrl}
+                        src={getAbsoluteImageUrl(part.imageUrl)}
                         alt={`${part.itemName} - YB ${part.ybNo}`}
                         itemProp="image"
                         onError={() => handleImageError(part.id)}
