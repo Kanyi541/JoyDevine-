@@ -286,11 +286,13 @@ export const seedFirestoreParts = async (overwriteWithProductsImg = false): Prom
 };
 
 /**
- * Migrate all local Base64 images to Firebase Storage
+ * Migrate all local images (Base64 or /productsimg/) to Firebase Storage
  */
 export const migrateBase64ToStorage = async (onProgress: (msg: string, progress?: number) => void): Promise<number> => {
   const parts = getStoredParts();
-  const partsToMigrate = parts.filter(p => p.imageUrl && p.imageUrl.startsWith('data:'));
+  const partsToMigrate = parts.filter(p => 
+    p.imageUrl && (p.imageUrl.startsWith('data:') || p.imageUrl.startsWith('/productsimg/'))
+  );
   
   if (partsToMigrate.length === 0) {
     onProgress('No images to migrate.');
@@ -300,11 +302,25 @@ export const migrateBase64ToStorage = async (onProgress: (msg: string, progress?
   let completed = 0;
   onProgress(`Starting migration of ${partsToMigrate.length} images...`, 0);
 
-  // Perform uploads in parallel
-  await Promise.all(partsToMigrate.map(async (part) => {
+  for (const part of partsToMigrate) {
     try {
+      let base64Image = '';
+
+      if (part.imageUrl!.startsWith('data:')) {
+        base64Image = part.imageUrl!;
+      } else {
+        // Fetch local image and convert to Base64
+        const response = await fetch(part.imageUrl!);
+        const blob = await response.blob();
+        base64Image = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        });
+      }
+
       const storagePath = `parts/${Date.now()}_${part.id}.jpg`;
-      const publicUrl = await uploadToFirebaseStorage(part.imageUrl!, storagePath);
+      const publicUrl = await uploadToFirebaseStorage(base64Image, storagePath);
       
       // Update part with new URL
       await savePart({ ...part, imageUrl: publicUrl });
@@ -313,7 +329,7 @@ export const migrateBase64ToStorage = async (onProgress: (msg: string, progress?
     } catch (err) {
       console.error(`Failed to migrate image for ${part.itemName}:`, err);
     }
-  }));
+  }
   
   onProgress(`Migration complete. ${completed} images migrated.`, 100);
   return completed;

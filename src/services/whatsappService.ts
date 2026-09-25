@@ -1,6 +1,4 @@
 import { AutoPart } from '../types';
-import { db } from './firebase';
-import { doc, setDoc } from 'firebase/firestore';
 
 export const PRIMARY_WHATSAPP_PHONE = '254111871428';
 export const PRIMARY_PHONE_DISPLAY = '0111 871 428';
@@ -18,39 +16,18 @@ export const STORE_LOCATION_TEXT = 'Room B13, Kirinyaga Crescent, opposite Seven
  * Get a public, crawler-accessible image URL for WhatsApp link unfurling.
  * WhatsApp requires a publicly accessible HTTP/HTTPS URL at the start of the message
  * to render the rich visual image preview card above the message.
- */
-/**
- * Get a public, crawler-accessible image URL for WhatsApp link unfurling.
+ * Only Firebase Storage URLs are supported for direct previewing.
  */
 export function getPublicImageUrlForWhatsApp(imageUrl?: string, category?: string, ybNo?: string): string {
-  const trimmedImageUrl = imageUrl?.trim();
-  // 1. If it's already an absolute URL (e.g. from Firebase), return it.
-  if (trimmedImageUrl && (trimmedImageUrl.startsWith('http://') || trimmedImageUrl.startsWith('https://'))) {
-    // Generate a short slug
-    const slug = Math.random().toString(36).substring(7);
-    setDoc(doc(db, 'urlRedirects', slug), { longUrl: trimmedImageUrl, createdAt: new Date().toISOString() }).catch(console.error);
-    return `https://joydevineautospares.vercel.app/i/${slug}`;
+  if (!imageUrl) return '';
+
+  // Only allow Firebase Storage URLs for direct image previewing.
+  if (imageUrl.startsWith('https://firebasestorage.googleapis.com/')) {
+    return imageUrl;
   }
-  
-  // 2. Otherwise, construct it as an absolute URL on our domain.
-  // If no imageUrl, fallback to category image.
-  const categoryFallbackMap: Record<string, string> = {
-    'Wheel Cylinders & Calipers': '/productimg/brake-wheel-cylinder.jpg',
-    'Master Cylinders': '/productimg/brake-master-cylinder.jpg',
-    'Hoses & Hydraulic Lines': '/productimg/brake-hose-flexible.jpg',
-    'Shock Boots & Gaiters': '/productimg/shock-boot-dust-cover.jpg',
-    'Cables & Linkages': ybNo?.includes('78180')
-      ? '/productimg/accelerator-cable.jpg'
-      : '/productimg/handbrake-cable.jpg',
-  };
 
-  let path = trimmedImageUrl || categoryFallbackMap[category || ''] || '';
-  if (!path) return '';
-
-  // Clean the path to ensure it starts with /productimg/
-  // Remove any existing /productsimg/ or /productimg/ to avoid double-prefixing
-  path = path.replace(/^\/(productsimg|productimg)\//, '');
-  return `https://joydevineautospares.vercel.app/productimg/${path.startsWith('/') ? path.substring(1) : path}`;
+  // If not a Firebase Storage URL, return empty string so WhatsApp omits the preview.
+  return '';
 }
 
 /**
@@ -74,7 +51,6 @@ export function buildWhatsAppPartOrderUrl(part: AutoPart): string {
     part.des ? `• *Application:* ${part.des}` : '',
     `• *Condition:* ${part.condition || 'Brand New'}`,
     `• *Location:* Kirinyaga Crescent, opposite Seventies Plaza (Room B13), Nairobi`,
-    `• *Photo:* ${photoUrl}`,
     `━━━━━━━━━━━━━━━━━━━━━━━━`,
     `Hello JoyDivine Auto Spares, I would like to order this spare part. Please confirm stock availability and M-Pesa till / dispatch details.`
   ].filter(Boolean);
@@ -128,14 +104,12 @@ export function buildWhatsAppCartOrderUrl(
   ];
 
   items.forEach((item, index) => {
-    const itemPhoto = getPublicImageUrlForWhatsApp(item.part.imageUrl, item.part.category, item.part.ybNo);
     lines.push(
       `${index + 1}. *${item.part.itemName}*`,
       `   • YB No: ${item.part.ybNo} | Part Number: ${item.part.oem}`,
       `   • Qty: ${item.quantity} x KES ${item.part.priceKes.toLocaleString()} = KES ${(
         item.part.priceKes * item.quantity
-      ).toLocaleString()}`,
-      `   • Photo: ${itemPhoto}`
+      ).toLocaleString()}`
     );
   });
 

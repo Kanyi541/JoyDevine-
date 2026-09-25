@@ -232,21 +232,23 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
     }
   };
 
-  // Sync / Migrate all catalog parts to productsimg paths in Firestore
-  const handleSeedWithProductsImg = async () => {
-    setIsSyncingFirebase(true);
+  // Migrate all images to Firebase Storage
+  const handleRunImageMigration = async () => {
+    setIsMigrating(true);
+    setMigrationProgress(0);
+    setMigrationMessage('Starting...');
     try {
-      await seedFirestoreParts(true);
-      const fetched = await fetchDirectlyFromFirebase();
-      setParts(fetched);
-      onCatalogUpdated();
-      setSyncFeedback('✅ Successfully updated Firestore database with productsimg folder references!');
-      setTimeout(() => setSyncFeedback(null), 6000);
+      const count = await migrateBase64ToStorage((msg, progress) => {
+        setMigrationMessage(msg);
+        if (progress !== undefined) setMigrationProgress(progress);
+      });
+      setMigrationMessage(`✅ Migration complete! ${count} images migrated to Firebase Storage.`);
+      refreshPartsList();
     } catch (err: any) {
-      setSyncFeedback(`⚠️ Update error: ${err.message}`);
-      setTimeout(() => setSyncFeedback(null), 5000);
+      setMigrationMessage(`⚠️ Migration error: ${err.message}`);
     } finally {
-      setIsSyncingFirebase(false);
+      setIsMigrating(false);
+      setTimeout(() => setMigrationMessage(''), 5000);
     }
   };
 
@@ -2654,23 +2656,11 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
             <div className="p-5 bg-white border border-slate-200 rounded-xl shadow-sm space-y-3">
               <h3 className="font-bold text-sm text-[#0A192F]">Admin Maintenance</h3>
               <button
-                onClick={async () => {
-                  if (confirm('Start image migration to Firebase Storage? This may take a while.')) {
-                    setIsMigrating(true);
-                    setMigrationProgress(0);
-                    setMigrationMessage('Starting...');
-                    await migrateBase64ToStorage((msg, progress) => {
-                      setMigrationMessage(msg);
-                      if (progress !== undefined) setMigrationProgress(progress);
-                    });
-                    setIsMigrating(false);
-                    alert('Migration Finished');
-                  }
-                }}
+                onClick={handleRunImageMigration}
                 disabled={isMigrating}
                 className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold rounded-lg cursor-pointer disabled:opacity-50"
               >
-                {isMigrating ? 'Migrating Images...' : 'Migrate All Base64 Images to Firebase Storage'}
+                {isMigrating ? 'Migrating Images...' : 'Migrate All Images to Firebase Storage'}
               </button>
               {isMigrating && (
                 <div className="mt-4 p-3 bg-slate-50 border border-slate-200 rounded-lg">
