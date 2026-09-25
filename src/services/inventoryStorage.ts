@@ -288,28 +288,35 @@ export const seedFirestoreParts = async (overwriteWithProductsImg = false): Prom
 /**
  * Migrate all local Base64 images to Firebase Storage
  */
-export const migrateBase64ToStorage = async (onProgress: (msg: string) => void): Promise<number> => {
+export const migrateBase64ToStorage = async (onProgress: (msg: string, progress?: number) => void): Promise<number> => {
   const parts = getStoredParts();
-  let count = 0;
-
-  for (const part of parts) {
-    if (part.imageUrl && part.imageUrl.startsWith('data:')) {
-      onProgress(`Migrating ${part.itemName}...`);
-      try {
-        const storagePath = `parts/${Date.now()}_${part.id}.jpg`;
-        const publicUrl = await uploadToFirebaseStorage(part.imageUrl, storagePath);
-        
-        // Update part with new URL
-        await savePart({ ...part, imageUrl: publicUrl });
-        count++;
-      } catch (err) {
-        console.error(`Failed to migrate image for ${part.itemName}:`, err);
-      }
-    }
-  }
+  const partsToMigrate = parts.filter(p => p.imageUrl && p.imageUrl.startsWith('data:'));
   
-  onProgress(`Migration complete. ${count} images migrated.`);
-  return count;
+  if (partsToMigrate.length === 0) {
+    onProgress('No images to migrate.');
+    return 0;
+  }
+
+  let completed = 0;
+  onProgress(`Starting migration of ${partsToMigrate.length} images...`, 0);
+
+  // Perform uploads in parallel
+  await Promise.all(partsToMigrate.map(async (part) => {
+    try {
+      const storagePath = `parts/${Date.now()}_${part.id}.jpg`;
+      const publicUrl = await uploadToFirebaseStorage(part.imageUrl!, storagePath);
+      
+      // Update part with new URL
+      await savePart({ ...part, imageUrl: publicUrl });
+      completed++;
+      onProgress(`Migrated ${completed}/${partsToMigrate.length}...`, (completed / partsToMigrate.length) * 100);
+    } catch (err) {
+      console.error(`Failed to migrate image for ${part.itemName}:`, err);
+    }
+  }));
+  
+  onProgress(`Migration complete. ${completed} images migrated.`, 100);
+  return completed;
 };
 
 /**

@@ -132,6 +132,9 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
   const [salesSearch, setSalesSearch] = useState('');
   const [salesPaymentFilter, setSalesPaymentFilter] = useState<'ALL' | 'M-PESA' | 'CASH' | 'CARD'>('ALL');
   const [deletingSaleId, setDeletingSaleId] = useState<string | null>(null);
+  const [isMigrating, setIsMigrating] = useState(false);
+  const [migrationProgress, setMigrationProgress] = useState(0);
+  const [migrationMessage, setMigrationMessage] = useState('');
 
   // Inventory / Stock Registration Form State
   const [stockEntryMode, setStockEntryMode] = useState<'single' | 'batch'>('single');
@@ -2653,16 +2656,33 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
               <button
                 onClick={async () => {
                   if (confirm('Start image migration to Firebase Storage? This may take a while.')) {
-                    setIsDeleting(true); // Using isDeleting as a generic loading state
-                    await migrateBase64ToStorage((msg) => alert(msg));
-                    setIsDeleting(false);
+                    setIsMigrating(true);
+                    setMigrationProgress(0);
+                    setMigrationMessage('Starting...');
+                    await migrateBase64ToStorage((msg, progress) => {
+                      setMigrationMessage(msg);
+                      if (progress !== undefined) setMigrationProgress(progress);
+                    });
+                    setIsMigrating(false);
+                    alert('Migration Finished');
                   }
                 }}
-                disabled={isDeleting}
+                disabled={isMigrating}
                 className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold rounded-lg cursor-pointer disabled:opacity-50"
               >
-                {isDeleting ? 'Migrating Images...' : 'Migrate All Base64 Images to Firebase Storage'}
+                {isMigrating ? 'Migrating Images...' : 'Migrate All Base64 Images to Firebase Storage'}
               </button>
+              {isMigrating && (
+                <div className="mt-4 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                  <p className="text-xs font-medium text-slate-700 mb-2">{migrationMessage}</p>
+                  <div className="w-full bg-slate-200 rounded-full h-2">
+                    <div 
+                      className="bg-blue-600 h-2 rounded-full transition-all duration-300 ease-out" 
+                      style={{ width: `${migrationProgress}%` }}
+                    ></div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
