@@ -82,6 +82,7 @@ import {
   updatePOSUser
 } from '../services/authService';
 import { POSUserManagement } from './POSUserManagement';
+import { migrateBase64ToStorage } from '../services/inventoryStorage';
 import { JOYDEVINE_CATEGORIES, CATEGORY_DEFAULT_IMAGES } from '../data/joydevineParts';
 import { PRIMARY_WHATSAPP_PHONE, PRIMARY_PHONE_DISPLAY, PRIMARY_PHONE_TEL } from '../services/whatsappService';
 
@@ -967,7 +968,7 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                 }`}
               >
                 <Users className="w-3.5 h-3.5 text-amber-400" />
-                <span>Staff & Users</span>
+                <span>Admin Settings</span>
               </button>
             )}
 
@@ -2645,7 +2646,25 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
 
         {/* TAB 4: STAFF & USER MANAGEMENT (Admin Only) */}
         {activeTab === 'users' && isAdmin && (
-          <POSUserManagement currentUser={currentUser} />
+          <div className="space-y-6">
+            <POSUserManagement currentUser={currentUser} />
+            <div className="p-5 bg-white border border-slate-200 rounded-xl shadow-sm space-y-3">
+              <h3 className="font-bold text-sm text-[#0A192F]">Admin Maintenance</h3>
+              <button
+                onClick={async () => {
+                  if (confirm('Start image migration to Firebase Storage? This may take a while.')) {
+                    setIsDeleting(true); // Using isDeleting as a generic loading state
+                    await migrateBase64ToStorage((msg) => alert(msg));
+                    setIsDeleting(false);
+                  }
+                }}
+                disabled={isDeleting}
+                className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold rounded-lg cursor-pointer disabled:opacity-50"
+              >
+                {isDeleting ? 'Migrating Images...' : 'Migrate All Base64 Images to Firebase Storage'}
+              </button>
+            </div>
+          </div>
         )}
 
       </div>

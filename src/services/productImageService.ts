@@ -141,7 +141,7 @@ export function getCategoryDefaultImage(categoryName: string): string {
 export function getImageSourceType(url: string): 'DIRECT_STORAGE' | 'LOCAL_PRESET' | 'WEB_URL' | 'NONE' {
   if (!url) return 'NONE';
   if (url.includes('firebasestorage.googleapis.com')) return 'DIRECT_STORAGE';
-  if (url.startsWith('data:image/')) return 'DIRECT_DATABASE';
+  if (url.startsWith('data:image/')) return 'DIRECT_STORAGE';
   if (url.startsWith('/productsimg/')) return 'LOCAL_PRESET';
   if (url.startsWith('http://') || url.startsWith('https://')) return 'WEB_URL';
   return 'LOCAL_PRESET';

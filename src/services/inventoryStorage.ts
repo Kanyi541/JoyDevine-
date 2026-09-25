@@ -15,6 +15,7 @@ import {
   startAfter,
   onSnapshot 
 } from 'firebase/firestore';
+import { uploadToFirebaseStorage } from './productImageService';
 
 const PARTS_KEY = 'joydevine_parts_from_firestore_v4';
 const SALES_KEY = 'joydevine_pos_sales_v2';
@@ -282,6 +283,33 @@ export const seedFirestoreParts = async (overwriteWithProductsImg = false): Prom
   } catch (err) {
     console.error('Error seeding initial parts to Firestore:', err);
   }
+};
+
+/**
+ * Migrate all local Base64 images to Firebase Storage
+ */
+export const migrateBase64ToStorage = async (onProgress: (msg: string) => void): Promise<number> => {
+  const parts = getStoredParts();
+  let count = 0;
+
+  for (const part of parts) {
+    if (part.imageUrl && part.imageUrl.startsWith('data:')) {
+      onProgress(`Migrating ${part.itemName}...`);
+      try {
+        const storagePath = `parts/${Date.now()}_${part.id}.jpg`;
+        const publicUrl = await uploadToFirebaseStorage(part.imageUrl, storagePath);
+        
+        // Update part with new URL
+        await savePart({ ...part, imageUrl: publicUrl });
+        count++;
+      } catch (err) {
+        console.error(`Failed to migrate image for ${part.itemName}:`, err);
+      }
+    }
+  }
+  
+  onProgress(`Migration complete. ${count} images migrated.`);
+  return count;
 };
 
 /**
