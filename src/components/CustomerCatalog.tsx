@@ -52,6 +52,30 @@ export const CustomerCatalog: React.FC<CustomerCatalogProps> = ({
     setBrokenImages((prev) => new Set(prev).add(partId));
   };
 
+  // Dynamic categories based on items present in the database (declared before any early returns)
+  const availableCategories = React.useMemo(() => [
+    'All Parts',
+    ...Array.from(new Set(parts.map((p) => p.category).filter(Boolean))),
+  ], [parts]);
+
+  // Popular vehicle makes commonly requested at Kirinyaga Road counter
+  const popularVehicleMakes = ['Toyota', 'Nissan', 'Mazda', 'Isuzu', 'Mitsubishi', 'Subaru'];
+
+  // Enhanced speed-optimized search with multi-token matching (declared before any early returns)
+  const filteredParts = React.useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    const terms = q ? q.split(/\s+/).filter(Boolean) : [];
+
+    return parts.filter((part) => {
+      const matchesCategory = selectedCategory === 'All Parts' || part.category === selectedCategory;
+      if (!matchesCategory) return false;
+      if (terms.length === 0) return true;
+
+      const searchableText = `${part.itemName} ${part.ybNo} ${part.oem} ${part.des} ${part.category} ${part.brand || ''}`.toLowerCase();
+      return terms.every((term) => searchableText.includes(term));
+    });
+  }, [parts, selectedCategory, searchQuery]);
+
   // If there are no items in the database at all
   if (parts.length === 0) {
     return (
@@ -70,30 +94,6 @@ export const CustomerCatalog: React.FC<CustomerCatalogProps> = ({
       </section>
     );
   }
-
-  // Dynamic categories based on items present in the database
-  const availableCategories = React.useMemo(() => [
-    'All Parts',
-    ...Array.from(new Set(parts.map((p) => p.category).filter(Boolean))),
-  ], [parts]);
-
-  // Popular vehicle makes commonly requested at Kirinyaga Road counter
-  const popularVehicleMakes = ['Toyota', 'Nissan', 'Mazda', 'Isuzu', 'Mitsubishi', 'Subaru'];
-
-  // Enhanced speed-optimized search with multi-token matching
-  const filteredParts = React.useMemo(() => {
-    const q = searchQuery.toLowerCase().trim();
-    const terms = q ? q.split(/\s+/).filter(Boolean) : [];
-
-    return parts.filter((part) => {
-      const matchesCategory = selectedCategory === 'All Parts' || part.category === selectedCategory;
-      if (!matchesCategory) return false;
-      if (terms.length === 0) return true;
-
-      const searchableText = `${part.itemName} ${part.ybNo} ${part.oem} ${part.des} ${part.category} ${part.brand || ''}`.toLowerCase();
-      return terms.every((term) => searchableText.includes(term));
-    });
-  }, [parts, selectedCategory, searchQuery]);
 
   return (
     <section className="py-4 sm:py-6 px-3 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-4">
