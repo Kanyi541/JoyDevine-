@@ -278,16 +278,20 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
       const res = await uploadProductImage(file);
       setImageUrl(res.url);
       setImageAutoDetected(false);
-      if (res.diagnostic) {
+      if (res.isDirectFirestore) {
         setUploadSuccessMsg(
-          `✓ Photo synced to database! Compressed from ${res.diagnostic.originalSizeKb} KB → ${res.diagnostic.compressedSizeKb} KB (Firestore ready)`
+          `✓ Photo attached directly to database! (${res.diagnostic?.compressedSizeKb || 45} KB Firestore ready)`
+        );
+      } else if (res.diagnostic) {
+        setUploadSuccessMsg(
+          `✓ Photo uploaded to Cloud Storage! Compressed from ${res.diagnostic.originalSizeKb} KB → ${res.diagnostic.compressedSizeKb} KB`
         );
       } else {
         setUploadSuccessMsg(`✓ Photo synced directly to database: ${res.filename}`);
       }
       setTimeout(() => setUploadSuccessMsg(null), 6000);
     } catch (err: any) {
-      alert('Photo processing error: ' + err.message);
+      alert('Photo processing error: ' + (err?.message || 'Failed to process photo.'));
     } finally {
       setIsUploadingImage(false);
     }

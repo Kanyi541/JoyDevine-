@@ -21,12 +21,22 @@ export const STORE_LOCATION_TEXT = 'Room B13, Kirinyaga Crescent, opposite Seven
 export function getPublicImageUrlForWhatsApp(imageUrl?: string, category?: string, ybNo?: string): string {
   if (!imageUrl) return '';
 
-  // Only allow Firebase Storage URLs for direct image previewing.
+  // 1. Direct Firebase Storage URLs (ideal for rich WhatsApp link preview)
   if (imageUrl.startsWith('https://firebasestorage.googleapis.com/')) {
     return imageUrl;
   }
 
-  // If not a Firebase Storage URL, return empty string so WhatsApp omits the preview.
+  // 2. Any other public HTTP/HTTPS URL
+  if (imageUrl.startsWith('https://') || imageUrl.startsWith('http://')) {
+    return imageUrl;
+  }
+
+  // 3. Bundled catalog images on public domain
+  if (imageUrl.startsWith('/productsimg/')) {
+    return `https://joydevineautospares.vercel.app${imageUrl}`;
+  }
+
+  // Base64 data URLs cannot be unfurled by WhatsApp crawler, so omit from line 1
   return '';
 }
 

@@ -112,20 +112,44 @@ export async function uploadToFirebaseStorage(base64Image: string, path: string)
 }
 
 /**
- * Upload or process a local device image for Firebase Storage
+ * Upload or process a local device image.
+ * Tries Firebase Cloud Storage first; if Storage permissions are unauthorized or unavailable,
+ * automatically falls back to embedding the compressed photo directly into Firestore so
+ * the POS user is never blocked by storage/unauthorized errors.
  */
-export async function uploadProductImage(file: File): Promise<{ url: string; filename: string; diagnostic?: ImageProcessingResult }> {
+export async function uploadProductImage(file: File): Promise<{
+  url: string;
+  filename: string;
+  diagnostic?: ImageProcessingResult;
+  isDirectFirestore?: boolean;
+}> {
   const processed = await compressLocalImageForDatabase(file);
   
-  // Upload to storage
-  const storagePath = `parts/${Date.now()}_${file.name}`;
-  const publicUrl = await uploadToFirebaseStorage(processed.url, storagePath);
-  
-  return {
-    url: publicUrl,
-    filename: file.name,
-    diagnostic: processed,
-  };
+  // Clean filename for cloud storage
+  const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+  const storagePath = `parts/${Date.now()}_${sanitizedName}`;
+
+  try {
+    const publicUrl = await uploadToFirebaseStorage(processed.url, storagePath);
+    return {
+      url: publicUrl,
+      filename: file.name,
+      diagnostic: processed,
+      isDirectFirestore: false,
+    };
+  } catch (storageErr: any) {
+    console.warn(
+      'Firebase Cloud Storage upload not permitted or unavailable, falling back to direct Firestore storage:',
+      storageErr?.message || storageErr
+    );
+    // Graceful Fallback: The compressed image (processed.url) is < 150KB and stores directly in Firestore!
+    return {
+      url: processed.url,
+      filename: file.name,
+      diagnostic: processed,
+      isDirectFirestore: true,
+    };
+  }
 }
 
 /**
