@@ -47,6 +47,7 @@ import {
   Phone
 } from 'react-bootstrap-icons';
 import { PhoneCameraSyncModal } from './PhoneCameraSyncModal';
+import { PrintBookletModal } from './PrintBookletModal';
 import { 
   listenToCameraSession, 
   updateActiveProductInSession, 
@@ -163,6 +164,7 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
   const [showImageLibraryModal, setShowImageLibraryModal] = useState(false);
   const [showPhoneCameraModal, setShowPhoneCameraModal] = useState(false);
   const [phoneCameraTarget, setPhoneCameraTarget] = useState<'single' | 'batch'>('single');
+  const [showPrintBookletModal, setShowPrintBookletModal] = useState(false);
   const [pairedPhoneSessionId, setPairedPhoneSessionId] = useState<string | null>(() => {
     try {
       return localStorage.getItem('joydevine_pos_paired_session_id');
@@ -1035,6 +1037,17 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                 <span>Admin Settings</span>
               </button>
             )}
+
+            {/* Print Catalog Booklet Button */}
+            <button
+              type="button"
+              onClick={() => setShowPrintBookletModal(true)}
+              className="px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-600 text-white transition-colors cursor-pointer shadow-xs"
+              title="Print Well-Arranged Product Catalog Booklet (Photos, OEM Codes, Descriptions)"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>Print Booklet</span>
+            </button>
 
             <div className="h-4 w-px bg-slate-700 mx-1 hidden sm:block"></div>
 
@@ -2436,12 +2449,23 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                   <h3 className="font-bold text-sm text-[#0A192F] uppercase tracking-wider font-mono">
                     Stocked Inventory ({parts.length})
                   </h3>
-                  <button
-                    onClick={refreshPartsList}
-                    className="text-xs text-slate-500 hover:text-slate-900 flex items-center gap-1"
-                  >
-                    <RefreshCw className="w-3 h-3" /> Refresh
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowPrintBookletModal(true)}
+                      className="px-2.5 py-1 rounded bg-blue-50 text-blue-800 border border-blue-200 hover:bg-blue-100 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                      title="Print Well-Arranged Product Catalog Booklet (Photos, OEM Codes, Descriptions)"
+                    >
+                      <Printer className="w-3.5 h-3.5 text-blue-700" />
+                      <span>Print Booklet</span>
+                    </button>
+                    <button
+                      onClick={refreshPartsList}
+                      className="text-xs text-slate-500 hover:text-slate-900 flex items-center gap-1 cursor-pointer"
+                    >
+                      <RefreshCw className="w-3 h-3" /> Refresh
+                    </button>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -3120,6 +3144,13 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
         }}
         partName={phoneCameraTarget === 'batch' ? `${batchCategory} (Batch)` : itemName}
         ybNo={phoneCameraTarget === 'batch' ? undefined : ybNo}
+      />
+
+      {/* PRINT CATALOG BOOKLET MODAL (Well-arranged photos, OEM codes, descriptions) */}
+      <PrintBookletModal
+        isOpen={showPrintBookletModal}
+        onClose={() => setShowPrintBookletModal(false)}
+        parts={parts}
       />
 
       {/* CHANGE PASSWORD MODAL */}
