@@ -76,25 +76,6 @@ export const CustomerCatalog: React.FC<CustomerCatalogProps> = ({
     });
   }, [parts, selectedCategory, searchQuery]);
 
-  // If there are no items in the database at all
-  if (parts.length === 0) {
-    return (
-      <section className="py-6 sm:py-8 px-3 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-          <div className="bg-white rounded-lg overflow-hidden border border-slate-200 flex flex-col justify-between min-h-[260px] animate-pulse">
-            <div className="aspect-[4/3] bg-slate-100 flex items-center justify-center p-3">
-              <Package className="w-6 h-6 stroke-[1.5] text-slate-300" />
-            </div>
-            <div className="p-3 flex-1 space-y-2">
-              <div className="h-3 bg-slate-200 rounded w-3/4"></div>
-              <div className="h-3 bg-slate-100 rounded w-1/2"></div>
-            </div>
-          </div>
-        </div>
-      </section>
-    );
-  }
-
   return (
     <section className="py-4 sm:py-6 px-3 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-4">
       

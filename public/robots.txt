@@ -24,4 +24,4 @@ Allow: /
 User-agent: ClaudeBot
 Allow: /
 
-Sitemap: https://joydivineautospares.co.ke/sitemap.xml
+Sitemap: https://joydevineautospares.vercel.app/sitemap.xml

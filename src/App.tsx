@@ -24,6 +24,7 @@ import {
   subscribeToDatabaseStatus,
   fetchDirectlyFromFirebase 
 } from './services/inventoryStorage';
+import { getAbsoluteImageUrl } from './services/productImageService';
 
 export const App: React.FC = () => {
   // Check if URL was requested as /pos, #pos, /#/pos, or ?pos
@@ -158,11 +159,68 @@ export const App: React.FC = () => {
 
   const cartItemsCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
+  // Unified loading lifecycle: preloads parts and visible catalog images
+  // so the user experiences ONE smooth transition without a secondary skeleton load
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 2000);
-    return () => clearTimeout(timer);
+    let isMounted = true;
+
+    const prepareStorefront = async () => {
+      // 1. Min visual display time (800ms) for elegant brand presentation
+      const minDisplay = new Promise((resolve) => setTimeout(resolve, 800));
+
+      // 2. Obtain current parts catalog
+      let catalog = parts;
+      if (catalog.length === 0) {
+        try {
+          const direct = await fetchDirectlyFromFirebase();
+          if (direct && direct.length > 0) {
+            catalog = direct;
+            setParts(direct);
+          }
+        } catch (err) {
+          console.warn('Initial parts prefetch notice:', err);
+        }
+      }
+
+      // 3. Preload the first batch of visible product images (first 10 items)
+      const imagesToPreload = catalog
+        .slice(0, 10)
+        .map((p) => p.imageUrl)
+        .filter((url): url is string => Boolean(url) && !url.startsWith('data:'));
+
+      const imageLoadPromises = imagesToPreload.map((rawUrl) => {
+        return new Promise<void>((resolve) => {
+          const absoluteSrc = getAbsoluteImageUrl(rawUrl);
+          const img = new Image();
+          img.src = absoluteSrc;
+          if (img.complete) {
+            resolve();
+          } else {
+            img.onload = () => resolve();
+            img.onerror = () => resolve();
+          }
+        });
+      });
+
+      // 4. Maximum safety timeout (2.5s) so the app NEVER hangs on poor cellular connections
+      const maxTimeout = new Promise((resolve) => setTimeout(resolve, 2500));
+
+      // Wait until initial images are cached + min display passed, OR max safety timeout fires
+      await Promise.race([
+        Promise.all([Promise.all(imageLoadPromises), minDisplay]),
+        maxTimeout,
+      ]);
+
+      if (isMounted) {
+        setIsLoading(false);
+      }
+    };
+
+    prepareStorefront();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   if (isLoading) {
