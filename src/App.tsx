@@ -8,6 +8,7 @@ import { ProductDetailModal } from './components/ProductDetailModal';
 import { CustomerCartModal, CartItem } from './components/CustomerCartModal';
 import { LocationAndContactSection } from './components/LocationAndContactSection';
 import { POSView } from './components/POSView';
+import { PhoneCameraCaptureView } from './components/PhoneCameraCaptureView';
 import LoadingScreen from './components/LoadingScreen';
 import { AutoPart } from './types';
 import { 
@@ -45,6 +46,14 @@ export const App: React.FC = () => {
     );
   };
 
+  // Check if phone was directed to a live camera pairing snap session (?snap=cam_123 or ?session=cam_123)
+  const checkSnapSessionId = () => {
+    if (typeof window === 'undefined') return null;
+    const params = new URLSearchParams(window.location.search);
+    return params.get('snap') || params.get('session');
+  };
+
+  const [snapSessionId, setSnapSessionId] = useState<string | null>(checkSnapSessionId());
   const [isPOSView, setIsPOSView] = useState<boolean>(checkIsPOSRoute());
   const [parts, setParts] = useState<AutoPart[]>(getStoredParts());
   const [searchQuery, setSearchQuery] = useState('');
@@ -222,6 +231,11 @@ export const App: React.FC = () => {
       isMounted = false;
     };
   }, []);
+
+  // If user opened a phone camera pairing session via QR code, render instant capture view
+  if (snapSessionId) {
+    return <PhoneCameraCaptureView sessionId={snapSessionId} />;
+  }
 
   if (isLoading) {
     return <LoadingScreen />;

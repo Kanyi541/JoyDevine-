@@ -19,6 +19,7 @@
     "express": "^4.21.2",
     "firebase": "^12.19.0",
     "motion": "^12.23.24",
+    "qrcode.react": "^4.2.0",
     "react": "^19.0.1",
     "react-bootstrap-icons": "^1.11.6",
     "react-dom": "^19.0.1",

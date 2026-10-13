@@ -81,6 +81,8 @@
     "/sales/{saleId}": { "schema": "sales", "description": "Sales" },
     "/imageMemory/{imageId}": { "schema": "imageMemory", "description": "Image memory" },
     "/urlRedirects/{slug}": { "schema": "urlRedirects", "description": "URL Redirects" },
-    "/posUsers/{userId}": { "schema": "posUsers", "description": "POS Users" }
+    "/posUsers/{userId}": { "schema": "posUsers", "description": "POS Users" },
+    "/cameraSessions/{sessionId}": { "schema": "parts", "description": "Camera sync sessions" },
+    "/systemMeta/{metaId}": { "schema": "parts", "description": "System metadata" }
   }
 }

@@ -345,7 +345,7 @@ export const checkMigrationStatus = async (): Promise<boolean> => {
     const docSnap = await getDoc(metaRef);
     return docSnap.exists() && docSnap.data().status === 'completed';
   } catch (err) {
-    console.error('Failed to check migration status:', err);
+    console.warn('Migration status notice (defaulting to not completed):', err);
     return false;
   }
 };

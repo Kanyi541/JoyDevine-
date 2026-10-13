@@ -42,8 +42,16 @@ import {
   Camera, 
   Copy, 
   CardChecklist as ListPlus, 
-  CheckLg as Check
+  CheckLg as Check,
+  QrCodeScan,
+  Phone
 } from 'react-bootstrap-icons';
+import { PhoneCameraSyncModal } from './PhoneCameraSyncModal';
+import { 
+  listenToCameraSession, 
+  updateActiveProductInSession, 
+  disconnectCameraSession 
+} from '../services/cameraSessionService';
 import { AutoPart, POSSaleItem, POSSaleRecord, POSUser } from '../types';
 import { 
   getStoredParts, 
@@ -153,6 +161,16 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
   const [condition, setCondition] = useState<'Brand New' | 'OEM Replacement' | 'Heavy Duty'>('Brand New');
   const [imageAutoDetected, setImageAutoDetected] = useState(false);
   const [showImageLibraryModal, setShowImageLibraryModal] = useState(false);
+  const [showPhoneCameraModal, setShowPhoneCameraModal] = useState(false);
+  const [phoneCameraTarget, setPhoneCameraTarget] = useState<'single' | 'batch'>('single');
+  const [pairedPhoneSessionId, setPairedPhoneSessionId] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem('joydevine_pos_paired_session_id');
+    } catch {
+      return null;
+    }
+  });
+  const [isPhoneConnected, setIsPhoneConnected] = useState(false);
 
   // Batch Multi-Product Entry State (Add more than one product of that category)
   const [batchCategory, setBatchCategory] = useState<string>(JOYDEVINE_CATEGORIES[1]);
@@ -261,6 +279,47 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
   useEffect(() => {
     checkMigrationStatus().then(setIsMigrationDone);
   }, []);
+
+  // Real-time background listener for persistent continuous phone camera pairing
+  useEffect(() => {
+    if (!pairedPhoneSessionId) {
+      setIsPhoneConnected(false);
+      return;
+    }
+
+    const unsub = listenToCameraSession(pairedPhoneSessionId, (data) => {
+      if (!data || data.status === 'expired') {
+        setIsPhoneConnected(false);
+        return;
+      }
+      setIsPhoneConnected(data.status === 'connected');
+
+      // Auto-apply photo when phone snaps a photo in the background!
+      if (data.imageUrl && data.photoTimestamp) {
+        if (phoneCameraTarget === 'batch') {
+          setBatchImageUrl(data.imageUrl);
+          setBatchFeedback('✓ Photo received from paired phone applied to batch!');
+          setTimeout(() => setBatchFeedback(null), 4000);
+        } else {
+          setImageUrl(data.imageUrl);
+          setImageAutoDetected(false);
+          setUploadSuccessMsg('✓ Photo received from paired phone & attached to product!');
+          setTimeout(() => setUploadSuccessMsg(null), 5000);
+        }
+      }
+    });
+
+    return () => unsub();
+  }, [pairedPhoneSessionId, phoneCameraTarget]);
+
+  // Keep phone informed of what product is currently being edited on PC
+  useEffect(() => {
+    if (pairedPhoneSessionId && isPhoneConnected) {
+      const targetName = phoneCameraTarget === 'batch' ? `${batchCategory} (Batch)` : itemName;
+      const targetYb = phoneCameraTarget === 'batch' ? undefined : ybNo;
+      updateActiveProductInSession(pairedPhoneSessionId, targetName, targetYb);
+    }
+  }, [pairedPhoneSessionId, isPhoneConnected, itemName, ybNo, batchCategory, phoneCameraTarget]);
 
   // Drag-and-drop & URL input state
   const [isDraggingOver, setIsDraggingOver] = useState(false);
@@ -1690,13 +1749,27 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                           <p className="text-slate-500 text-[10px] leading-tight">
                             Automatically applied to all {batchRows.length} items below. No need to add photos individually!
                           </p>
-                          <label
-                            htmlFor="pos-batch-image-replace"
-                            className="text-[10px] text-blue-700 font-bold hover:underline cursor-pointer flex items-center gap-1 pt-0.5"
-                          >
-                            <Upload className="w-2.5 h-2.5" />
-                            <span>Custom photo for batch</span>
-                          </label>
+                          <div className="flex items-center gap-3 pt-0.5">
+                            <label
+                              htmlFor="pos-batch-image-replace"
+                              className="text-[10px] text-blue-700 font-bold hover:underline cursor-pointer flex items-center gap-1"
+                            >
+                              <Upload className="w-2.5 h-2.5" />
+                              <span>Custom photo for batch</span>
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPhoneCameraTarget('batch');
+                                setShowPhoneCameraModal(true);
+                              }}
+                              className="text-[10px] text-emerald-700 font-bold hover:underline cursor-pointer flex items-center gap-1"
+                              title="Scan QR code with phone to snap photo for this batch"
+                            >
+                              <QrCodeScan className="w-2.5 h-2.5 text-emerald-600" />
+                              <span>Snap from Phone (QR)</span>
+                            </button>
+                          </div>
                           <input
                             id="pos-batch-image-replace"
                             type="file"
@@ -2085,6 +2158,40 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                       </span>
                     </div>
 
+                    {/* Live Continuous Phone Camera Status Banner */}
+                    {isPhoneConnected && (
+                      <div className="flex items-center justify-between p-2.5 bg-emerald-50 border border-emerald-300 rounded-lg text-xs">
+                        <div className="flex items-center gap-2 text-emerald-800 font-bold">
+                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                          <span>📱 Phone Camera Linked & Listening (Continuous Mode)</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-[11px]">
+                          <span className="text-slate-500 hidden sm:inline">Just snap on phone—no scanning needed!</span>
+                          <button
+                            type="button"
+                            onClick={() => setShowPhoneCameraModal(true)}
+                            className="text-blue-700 hover:underline font-bold cursor-pointer"
+                          >
+                            QR Code
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (pairedPhoneSessionId) {
+                                await disconnectCameraSession(pairedPhoneSessionId);
+                                setPairedPhoneSessionId(null);
+                                setIsPhoneConnected(false);
+                              }
+                            }}
+                            className="text-rose-600 hover:underline font-bold cursor-pointer"
+                            title="Unpair phone"
+                          >
+                            Unpair
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Image display with category badge */}
                     <div
                       onDragOver={(e) => {
@@ -2138,7 +2245,7 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                                 ? `Standard catalog image for ${category}. You do not have to upload anything!`
                                 : 'Linked from external URL.'}
                             </p>
-                            <div className="flex items-center gap-3 mt-1.5">
+                            <div className="flex items-center gap-3 mt-1.5 flex-wrap">
                               <label
                                 htmlFor="pos-product-image-upload-replace"
                                 className="text-[11px] font-bold text-blue-700 hover:text-blue-900 cursor-pointer hover:underline flex items-center gap-1"
@@ -2157,6 +2264,29 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                               />
                               <button
                                 type="button"
+                                onClick={() => {
+                                  setPhoneCameraTarget('single');
+                                  setShowPhoneCameraModal(true);
+                                }}
+                                className={`text-[11px] font-bold cursor-pointer hover:underline flex items-center gap-1 ${
+                                  isPhoneConnected ? 'text-emerald-700 font-extrabold' : 'text-emerald-700 hover:text-emerald-900'
+                                }`}
+                                title={isPhoneConnected ? 'Phone is paired and listening' : 'Scan QR code with phone to snap new photo'}
+                              >
+                                {isPhoneConnected ? (
+                                  <>
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                                    <span>Snap on Phone (Paired)</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <QrCodeScan className="w-3 h-3 text-emerald-600" />
+                                    <span>Snap from Phone</span>
+                                  </>
+                                )}
+                              </button>
+                              <button
+                                type="button"
                                 onClick={() => setImageUrl(getCategoryDefaultImage(category))}
                                 className="text-[11px] font-bold text-slate-500 hover:text-slate-700 cursor-pointer hover:underline"
                               >
@@ -2167,7 +2297,7 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                         </div>
                       ) : (
                         <div className="space-y-2 py-2">
-                          <div className="flex items-center justify-center gap-2">
+                          <div className="flex items-center justify-center gap-2 flex-wrap">
                             <label
                               htmlFor="pos-product-image-upload"
                               className={`px-3.5 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors ${
@@ -2187,13 +2317,39 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                               className="hidden"
                             />
 
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPhoneCameraTarget('single');
+                                setShowPhoneCameraModal(true);
+                              }}
+                              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors ${
+                                isPhoneConnected
+                                  ? 'bg-emerald-800 hover:bg-emerald-900 text-white ring-2 ring-emerald-400'
+                                  : 'bg-emerald-700 hover:bg-emerald-800 text-white'
+                              }`}
+                              title={isPhoneConnected ? 'Phone is paired! Just take photo on phone.' : 'Scan QR code with phone camera to take photo on your phone'}
+                            >
+                              {isPhoneConnected ? (
+                                <>
+                                  <span className="w-2 h-2 rounded-full bg-emerald-300 animate-ping"></span>
+                                  <span>Snap on Phone (Paired)</span>
+                                </>
+                              ) : (
+                                <>
+                                  <QrCodeScan className="w-3.5 h-3.5" />
+                                  <span>Snap from Phone (QR)</span>
+                                </>
+                              )}
+                            </button>
+
                             <label
                               htmlFor="pos-product-camera-snap"
                               className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
-                              title="Take photo with camera"
+                              title="Take photo with laptop camera"
                             >
                               <Camera className="w-3.5 h-3.5" />
-                              <span>Take Photo</span>
+                              <span>PC Camera</span>
                             </label>
                             <input
                               id="pos-product-camera-snap"
@@ -2944,6 +3100,27 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
           </div>
         </div>
       )}
+
+      {/* PHONE CAMERA LIVE SYNC MODAL (PC to Phone Real-Time Photo Transfer) */}
+      <PhoneCameraSyncModal
+        isOpen={showPhoneCameraModal}
+        onClose={() => setShowPhoneCameraModal(false)}
+        onPhotoReceived={(receivedUrl) => {
+          if (phoneCameraTarget === 'batch') {
+            setBatchImageUrl(receivedUrl);
+            setBatchFeedback('✓ Photo received from phone & applied to batch!');
+            setTimeout(() => setBatchFeedback(null), 4000);
+          } else {
+            setImageUrl(receivedUrl);
+            setImageAutoDetected(false);
+            setUploadSuccessMsg('✓ Photo received from phone & synced to database!');
+            setTimeout(() => setUploadSuccessMsg(null), 5000);
+          }
+          setShowPhoneCameraModal(false);
+        }}
+        partName={phoneCameraTarget === 'batch' ? `${batchCategory} (Batch)` : itemName}
+        ybNo={phoneCameraTarget === 'batch' ? undefined : ybNo}
+      />
 
       {/* CHANGE PASSWORD MODAL */}
       {showPassModal && (

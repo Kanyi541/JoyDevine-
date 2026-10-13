@@ -31,5 +31,15 @@ service cloud.firestore {
     match /posUsers/{userId} {
       allow read, write: if true;
     }
+
+    // Camera pairing sessions for cross-device PC-to-Phone photo sync
+    match /cameraSessions/{sessionId} {
+      allow read, write: if true;
+    }
+
+    // System metadata e.g. image migration status
+    match /systemMeta/{metaId} {
+      allow read, write: if true;
+    }
   }
 }
