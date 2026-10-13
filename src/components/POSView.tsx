@@ -120,7 +120,7 @@ interface POSViewProps {
 export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated }) => {
   // Authentication State
   const [currentUser, setCurrentUser] = useState<POSUser | null>(getCurrentPOSUser());
-  const [usernameInput, setUsernameInput] = useState('Devine2026');
+  const [usernameInput, setUsernameInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
@@ -805,7 +805,7 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                   type="text"
                   value={usernameInput}
                   onChange={(e) => setUsernameInput(e.target.value)}
-                  placeholder="e.g. Devine2026"
+                  placeholder="Enter username..."
                   className="w-full pl-9 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-900 focus:bg-white focus:outline-none focus:border-blue-700 focus:ring-2 focus:ring-blue-700/10 font-mono"
                   autoFocus
                   required
@@ -872,20 +872,6 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
               )}
             </button>
           </form>
-
-          {/* Quick Access Info for Admin */}
-          <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-1">
-            <div className="font-bold text-slate-700 flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-blue-700" />
-              <span>Admin Access:</span>
-            </div>
-            <div className="text-[11px] text-slate-600 font-mono">
-              Username: <strong className="text-[#0A192F]">Devine2026</strong> • Password: <strong className="text-[#0A192F]">Devine2026</strong>
-            </div>
-            <p className="text-[10px] text-slate-500 pt-0.5">
-              The administrator has full permission to add other staff users, modify catalog inventory, and audit all sales transactions.
-            </p>
-          </div>
 
           <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
             <span>Room B13 • Kirinyaga Rd</span>
