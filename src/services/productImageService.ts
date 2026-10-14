@@ -152,17 +152,35 @@ export async function uploadProductImage(file: File): Promise<{
   }
 }
 
+export const FALLBACK_IMAGE_DATA_URI = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="150" viewBox="0 0 200 150" fill="%23f1f5f9"><rect width="200" height="150" fill="%23f8fafc"/><path d="M70 60a10 10 0 1 0 0-20 10 10 0 0 0 0 20zm-30 50h120l-35-45-25 30-15-20-45 35z" fill="%23cbd5e1"/><text x="100" y="130" font-family="sans-serif" font-size="11" fill="%2394a3b8" text-anchor="middle">JoyDivine Auto Part</text></svg>`;
+
 /**
  * Resolve any image URL/path to a fully qualified absolute URL for display.
  */
-export function getAbsoluteImageUrl(url: string): string {
+export function getAbsoluteImageUrl(url: string | undefined): string {
   if (!url) return '';
   if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
     return url;
   }
   
   const cleanPath = url.startsWith('/') ? url : `/${url}`;
+  if (typeof window !== 'undefined' && window.location && window.location.origin) {
+    return `${window.location.origin}${cleanPath}`;
+  }
   return `https://joydevineautospares.vercel.app${cleanPath}`;
+}
+
+/**
+ * Safe image resolver that guarantees a valid displayable image URL
+ */
+export function getSafeImageUrl(url: string | undefined, categoryName?: string): string {
+  if (!url) {
+    if (categoryName && CATEGORY_DEFAULT_IMAGES[categoryName]) {
+      return getAbsoluteImageUrl(CATEGORY_DEFAULT_IMAGES[categoryName]);
+    }
+    return FALLBACK_IMAGE_DATA_URI;
+  }
+  return getAbsoluteImageUrl(url) || FALLBACK_IMAGE_DATA_URI;
 }
 
 /**

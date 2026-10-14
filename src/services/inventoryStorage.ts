@@ -273,6 +273,28 @@ export const fetchDirectlyFromFirebase = async (): Promise<AutoPart[]> => {
 };
 
 /**
+ * Robustly load all inventory parts for reporting, booklet printing, and cataloging.
+ * Falls back to local cached storage or INITIAL_PARTS if Firebase is unreachable.
+ */
+export const getAllInventoryParts = async (): Promise<AutoPart[]> => {
+  try {
+    const directItems = await fetchDirectlyFromFirebase();
+    if (directItems && directItems.length > 0) {
+      return directItems;
+    }
+  } catch (err) {
+    console.warn('[getAllInventoryParts] Direct Firestore fetch notice, checking local cache:', err);
+  }
+
+  const stored = getStoredParts();
+  if (stored && stored.length > 0) {
+    return stored;
+  }
+
+  return INITIAL_PARTS;
+};
+
+/**
  * Seed Firestore with initial parts pointing to /productsimg/ (only when explicitly requested by user)
  */
 export const seedFirestoreParts = async (overwriteWithProductsImg = false): Promise<void> => {

@@ -954,144 +954,144 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
     <div className="min-h-screen bg-slate-100 text-slate-900 pb-16">
       <Toaster />
       
-      {/* Top POS Management Bar: Deep Navy Blue */}
-      <div className="bg-[#0A192F] text-white border-b border-[#14284B] px-4 sm:px-6 lg:px-8 py-3 shadow-sm">
+      {/* Top POS Management Bar: Modern Deep Slate */}
+      <div className="bg-[#0F172A] text-white border-b border-slate-800 px-4 sm:px-6 lg:px-8 py-2.5 shadow-sm">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
           
           <div className="flex items-center gap-3">
-            <img 
-              src="/joydevine-logo.png" 
-              alt="JoyDivine Auto Spares" 
-              className="w-9 h-9 object-contain rounded-full border border-blue-400/30 shadow-xs shrink-0 bg-white"
-              referrerPolicy="no-referrer"
-            />
+            <div className="w-10 h-10 rounded-xl bg-white p-1 border border-slate-700 shadow-xs flex items-center justify-center shrink-0">
+              <img 
+                src="/joydevine-logo.png" 
+                alt="JoyDivine Auto Spares" 
+                className="w-full h-full object-contain rounded-lg"
+                referrerPolicy="no-referrer"
+              />
+            </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="font-black text-sm sm:text-base font-['Chivo'] tracking-wide">
-                  JOYDEVINE AUTO SPARES • COUNTER POS
+                <h1 className="font-black text-sm sm:text-base font-['Chivo'] tracking-wide uppercase">
+                  JoyDivine Auto Spares
                 </h1>
-                <span className="text-[10px] bg-emerald-600 text-white font-bold px-1.5 py-0.2 rounded uppercase">
-                  Active
+                <span className="text-[9px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.2 rounded uppercase">
+                  Counter Terminal
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400">
-                Kirinyaga Crescent, Opp. Seventies Plaza (Room B13) • Counter Cashier Terminal
+              <p className="text-[11px] text-slate-400 font-medium">
+                Room B13, Kirinyaga Crescent, Nairobi • Point of Sale & Inventory
               </p>
             </div>
           </div>
 
-          {/* Tab Navigation & User Controls */}
+          {/* Segmented Tab Navigation & User Controls */}
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={() => setActiveTab('cashier')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
-                activeTab === 'cashier'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'bg-[#14284B] text-slate-300 hover:text-white'
-              }`}
-            >
-              <ShoppingCart className="w-3.5 h-3.5" />
-              <span>Cashier Ticket</span>
-              {ticketItems.length > 0 && (
-                <span className="bg-white text-[#0A192F] text-[10px] font-black px-1.5 rounded-full">
-                  {ticketItems.length}
-                </span>
-              )}
-            </button>
-
-            <button
-              onClick={() => setActiveTab('register')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
-                activeTab === 'register'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'bg-[#14284B] text-slate-300 hover:text-white'
-              }`}
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>{isAdmin ? 'Stock Registration' : 'Stock Catalog'}</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('history')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
-                activeTab === 'history'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'bg-[#14284B] text-slate-300 hover:text-white'
-              }`}
-            >
-              <FileText className="w-3.5 h-3.5" />
-              <span>Sales Audit</span>
-            </button>
-
-            {/* Admin Only: Staff & User Management Tab */}
-            {isAdmin && (
+            
+            <div className="flex items-center bg-slate-900/90 p-1 rounded-xl border border-slate-800 shadow-inner">
               <button
-                onClick={() => setActiveTab('users')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
-                  activeTab === 'users'
-                    ? 'bg-amber-600 text-white shadow-sm'
-                    : 'bg-[#14284B] text-amber-300 hover:text-white border border-amber-500/30'
+                onClick={() => setActiveTab('cashier')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  activeTab === 'cashier'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-400 hover:text-white'
                 }`}
               >
-                <Users className="w-3.5 h-3.5 text-amber-400" />
-                <span>Admin Settings</span>
+                <ShoppingCart className="w-3.5 h-3.5" />
+                <span>Cashier Ticket</span>
+                {ticketItems.length > 0 && (
+                  <span className="bg-white text-blue-900 text-[10px] font-black px-1.5 rounded-full font-mono">
+                    {ticketItems.length}
+                  </span>
+                )}
               </button>
-            )}
+
+              <button
+                onClick={() => setActiveTab('register')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  activeTab === 'register'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>{isAdmin ? 'Stock Registration' : 'Stock Catalog'}</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('history')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  activeTab === 'history'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>Sales Audit</span>
+              </button>
+
+              {/* Admin Only: Staff & User Management Tab */}
+              {isAdmin && (
+                <button
+                  onClick={() => setActiveTab('users')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                    activeTab === 'users'
+                      ? 'bg-amber-600 text-white shadow-xs'
+                      : 'text-amber-300/80 hover:text-amber-300'
+                  }`}
+                >
+                  <Users className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Admin Settings</span>
+                </button>
+              )}
+            </div>
 
             {/* Print Catalog Booklet Button */}
             <button
               type="button"
               onClick={() => setShowPrintBookletModal(true)}
-              className="px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-600 text-white transition-colors cursor-pointer shadow-xs"
-              title="Print Well-Arranged Product Catalog Booklet (Photos, OEM Codes, Descriptions)"
+              className="px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-emerald-700/80 hover:bg-emerald-600 text-white transition-all cursor-pointer shadow-xs border border-emerald-600/40"
+              title="Print Customer Product Catalogue Booklet"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>Print Booklet</span>
             </button>
 
-            <div className="h-4 w-px bg-slate-700 mx-1 hidden sm:block"></div>
-
             {/* Active User Chip */}
-            <div className="flex items-center gap-2 bg-[#14284B] px-2.5 py-1 rounded-lg border border-slate-700">
+            <div className="flex items-center gap-2 bg-slate-800/90 px-2.5 py-1.5 rounded-xl border border-slate-700 text-xs">
               <div className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] ${
                 isAdmin ? 'bg-amber-400 text-slate-900' : 'bg-emerald-400 text-slate-900'
               }`}>
                 {currentUser.displayName.charAt(0).toUpperCase()}
               </div>
-              <div className="leading-tight text-left">
-                <div className="flex items-center gap-1">
-                  <span className="font-bold text-xs text-white truncate max-w-[110px]">
-                    {currentUser.displayName}
-                  </span>
-                  <span className={`text-[8px] font-black px-1 rounded uppercase ${
-                    isAdmin ? 'bg-amber-500/30 text-amber-300' : 'bg-emerald-500/30 text-emerald-300'
-                  }`}>
-                    {isAdmin ? 'ADMIN' : 'CASHIER'}
-                  </span>
-                </div>
-              </div>
+              <span className="font-bold text-white truncate max-w-[110px]">
+                {currentUser.displayName}
+              </span>
+              <span className={`text-[8px] font-black px-1.5 py-0.2 rounded uppercase ${
+                isAdmin ? 'bg-amber-400/20 text-amber-300 border border-amber-400/30' : 'bg-emerald-400/20 text-emerald-300 border border-emerald-400/30'
+              }`}>
+                {isAdmin ? 'ADMIN' : 'CASHIER'}
+              </span>
             </div>
 
-            {/* Quick Action Buttons */}
+            {/* Password Change Button */}
             <button
               onClick={() => setShowPassModal(true)}
               title="Change Password"
-              className="p-1.5 rounded bg-[#14284B] hover:bg-[#1E3A6B] text-slate-300 hover:text-white transition-colors cursor-pointer"
+              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer border border-slate-700"
             >
-              <Key className="w-4 h-4" />
+              <Key className="w-3.5 h-3.5" />
             </button>
 
+            {/* Logout Button */}
             <button
               onClick={handleLogout}
               title="Log Out POS"
-              className="p-1.5 rounded bg-rose-900/60 hover:bg-rose-800 text-rose-200 transition-colors cursor-pointer"
+              className="p-2 rounded-xl bg-rose-950/60 hover:bg-rose-900 text-rose-300 hover:text-rose-100 transition-colors cursor-pointer border border-rose-900/40"
             >
-              <LogOut className="w-4 h-4" />
+              <LogOut className="w-3.5 h-3.5" />
             </button>
 
             <button
               onClick={onBackToShop}
-              className="ml-1 text-xs font-bold text-blue-300 hover:text-white underline cursor-pointer"
+              className="ml-1 text-xs font-semibold text-blue-400 hover:text-blue-300 transition-colors cursor-pointer"
             >
               Shop Front →
             </button>
@@ -1207,52 +1207,45 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                       >
                         <div
                           onClick={() => handleAddToTicket(part)}
-                          className="bg-white border border-slate-200 hover:border-blue-700 rounded-xl p-3 flex flex-col justify-between gap-2.5 cursor-pointer shadow-2xs hover:shadow-md transition-all group"
+                          className="bg-white border border-slate-200/90 hover:border-blue-600 rounded-2xl p-3 flex flex-col justify-between gap-2.5 cursor-pointer shadow-xs hover:shadow-md transition-all group"
                         >
                         <div className="flex gap-3">
-                          <div className="w-16 h-16 bg-slate-50 border border-slate-200 rounded-lg p-1 flex items-center justify-center shrink-0 overflow-hidden">
-                            {part.imageUrl ? (
-                              <img
-                                src={part.imageUrl}
-                                alt={part.itemName}
-                                className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform"
-                              />
-                            ) : (
-                              <Package className="w-6 h-6 text-slate-400" />
-                            )}
+                          <div className="w-16 h-16 bg-slate-50 border border-slate-200/80 rounded-xl p-1 flex items-center justify-center shrink-0 overflow-hidden">
+                            <img
+                              src={part.imageUrl || getCategoryDefaultImage(part.category)}
+                              alt={part.itemName}
+                              className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform"
+                            />
                           </div>
                           <div className="flex-1 min-w-0 space-y-1">
                             <div className="flex items-center justify-between gap-1">
-                              <span className="text-xs font-mono font-bold text-white bg-[#0A192F] px-1.5 py-0.5 rounded shadow-2xs">
-                                {part.ybNo}
+                              <span className="text-[11px] font-mono font-bold text-slate-800 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">
+                                OEM: {part.oem}
                               </span>
-                              <span className="text-[10px] font-mono text-slate-500 truncate max-w-[100px]">
-                                {part.oem}
+                              <span className="text-[10px] text-slate-400 font-medium truncate max-w-[90px]">
+                                {part.category}
                               </span>
                             </div>
-                            <h4 className="font-bold text-xs text-slate-900 line-clamp-2 group-hover:text-blue-900 transition-colors leading-tight">
+                            <h4 className="font-bold text-xs text-slate-900 line-clamp-2 group-hover:text-blue-600 transition-colors leading-tight">
                               {part.itemName}
                             </h4>
-                            <span className="text-[10px] text-slate-500 font-medium block truncate">
-                              {part.category}
-                            </span>
                           </div>
                         </div>
 
                         <div className="flex items-center justify-between pt-2 border-t border-slate-100">
                           <div>
-                            <span className="text-[9px] text-slate-400 block font-mono">COUNTER PRICE</span>
-                            <span className="text-xs font-black text-blue-950 font-mono">
+                            <span className="text-[9px] text-slate-400 block font-mono font-semibold">UNIT PRICE</span>
+                            <span className="text-xs font-black text-slate-900 font-mono">
                               KES {part.priceKes.toLocaleString()}
                             </span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-bold ${
+                            <span className={`text-[10px] font-mono px-2 py-0.5 rounded-md font-bold ${
                               part.stock <= 0 
                                 ? 'bg-rose-100 text-rose-800'
                                 : part.stock < 5
                                 ? 'bg-amber-100 text-amber-900'
-                                : 'bg-slate-100 text-slate-700'
+                                : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                             }`}>
                               Stock: {part.stock}
                             </span>
@@ -1262,9 +1255,9 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                                 e.stopPropagation();
                                 handleAddToTicket(part);
                               }}
-                              className="px-2.5 py-1 bg-[#0A192F] hover:bg-blue-700 text-white rounded text-[11px] font-bold shadow-2xs transition-colors flex items-center gap-1 cursor-pointer"
+                              className="px-2.5 py-1 bg-[#0F172A] hover:bg-blue-600 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-xs"
                             >
-                              <Plus className="w-3 h-3 stroke-[3]" />
+                              <Plus className="w-3.5 h-3.5 stroke-[3]" />
                               <span>Add</span>
                             </button>
                           </div>
@@ -1277,14 +1270,14 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
 
               {/* Right: Counter Sales Ticket Card & Checkout (5 Cols Desktop) */}
               <div className="hidden lg:block lg:col-span-5">
-                <div className={`bg-white border rounded-xl shadow-sm p-4 sm:p-5 space-y-4 sticky top-16 transition-all ${
+                <div className={`bg-white border rounded-2xl shadow-sm p-4 sm:p-5 space-y-4 sticky top-16 transition-all ${
                   ticketFlash ? 'ring-2 ring-blue-500 border-blue-600 shadow-md' : 'border-slate-200'
                 }`}>
                   
                   <div className="flex items-center justify-between pb-3 border-b border-slate-200">
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="font-black text-sm text-[#0A192F] uppercase tracking-wider font-mono">
+                        <h3 className="font-black text-sm text-[#0F172A] uppercase tracking-wider font-mono">
                           Current Sales Ticket
                         </h3>
                         {ticketItems.length > 0 && (
@@ -1298,7 +1291,7 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                     {ticketItems.length > 0 && (
                       <button
                         onClick={handleClearTicket}
-                        className="text-rose-600 hover:text-rose-700 text-xs font-bold flex items-center gap-1 cursor-pointer px-2 py-1 rounded hover:bg-rose-50"
+                        className="text-rose-600 hover:text-rose-700 text-xs font-bold flex items-center gap-1 cursor-pointer px-2.5 py-1 rounded-lg hover:bg-rose-50 transition-colors"
                       >
                         <Trash2 className="w-3.5 h-3.5" /> Clear
                       </button>
@@ -1309,19 +1302,19 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                   {ticketItems.length === 0 ? (
                     <div className="text-center py-12 text-slate-400 space-y-2">
                       <ShoppingCart className="w-10 h-10 mx-auto opacity-30 text-slate-600" />
-                      <p className="text-xs font-medium">Ticket is empty.</p>
-                      <p className="text-[11px] text-slate-400">Click any spare part on the counter to add.</p>
+                      <p className="text-xs font-semibold text-slate-600">Ticket is empty.</p>
+                      <p className="text-[11px] text-slate-400">Click any spare part on the register to add to ticket.</p>
                     </div>
                   ) : (
                     <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
                       {ticketItems.map((item) => (
                         <div
                           key={item.part.id}
-                          className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between gap-2 text-xs"
+                          className="p-2.5 bg-slate-50/80 border border-slate-200 rounded-xl flex items-center justify-between gap-2 text-xs"
                         >
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-1.5 font-mono">
-                              <span className="font-bold text-[#0A192F]">{item.part.ybNo}</span>
+                              <span className="font-bold text-slate-900">{item.part.oem}</span>
                               <span className="text-slate-400">•</span>
                               <span className="text-slate-700 truncate font-sans font-medium">{item.part.itemName}</span>
                             </div>
@@ -1331,31 +1324,31 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                           </div>
 
                           <div className="flex items-center gap-2 shrink-0">
-                            <div className="flex items-center border border-slate-300 rounded bg-white">
+                            <div className="flex items-center border border-slate-300 rounded-lg bg-white overflow-hidden shadow-2xs">
                               <button
                                 onClick={() => handleUpdateTicketQty(item.part.id, -1)}
-                                className="px-2 py-0.5 font-bold hover:bg-slate-100 text-slate-700"
+                                className="px-2 py-0.5 font-bold hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer"
                               >
                                 -
                               </button>
-                              <span className="px-1.5 font-mono font-bold text-slate-900">
+                              <span className="px-1.5 font-mono font-bold text-slate-900 text-xs">
                                 {item.quantity}
                               </span>
                               <button
                                 onClick={() => handleUpdateTicketQty(item.part.id, 1)}
-                                className="px-2 py-0.5 font-bold hover:bg-slate-100 text-slate-700"
+                                className="px-2 py-0.5 font-bold hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer"
                               >
                                 +
                               </button>
                             </div>
 
-                            <span className="font-mono font-bold text-slate-900 w-16 text-right">
+                            <span className="font-mono font-black text-slate-900 w-16 text-right">
                               KES {item.subtotalKes.toLocaleString()}
                             </span>
 
                             <button
                               onClick={() => handleRemoveFromTicket(item.part.id)}
-                              className="text-slate-400 hover:text-rose-600 p-1"
+                              className="text-slate-400 hover:text-rose-600 p-1 transition-colors cursor-pointer"
                               title="Remove item"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -1369,9 +1362,9 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                   {/* Totals & Payment Method */}
                   {ticketItems.length > 0 && (
                     <div className="pt-3 border-t border-slate-200 space-y-3">
-                      <div className="flex justify-between items-baseline bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                      <div className="flex justify-between items-baseline bg-slate-50 p-3 rounded-xl border border-slate-200">
                         <span className="text-xs font-bold text-slate-700 uppercase font-mono">Ticket Total:</span>
-                        <span className="text-xl sm:text-2xl font-black text-[#0A192F] font-mono">
+                        <span className="text-xl sm:text-2xl font-black text-[#0F172A] font-mono">
                           KES {ticketTotalKes.toLocaleString()}
                         </span>
                       </div>
@@ -1387,10 +1380,10 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                               key={mode}
                               type="button"
                               onClick={() => setPaymentMethod(mode)}
-                              className={`py-2 px-2 rounded-lg font-bold border transition-colors cursor-pointer ${
+                              className={`py-2 px-2 rounded-xl font-bold border transition-all cursor-pointer ${
                                 paymentMethod === mode
-                                  ? 'bg-[#0A192F] text-white border-[#0A192F]'
-                                  : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
+                                  ? 'bg-[#0F172A] text-white border-[#0F172A] shadow-xs'
+                                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                               }`}
                             >
                               {mode}
@@ -1660,14 +1653,14 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
               
               {/* Left: Registration Form (7 or 8 Cols) - Only visible to Admin */}
               {isAdmin && (
-                <div className={`${stockEntryMode === 'batch' ? 'lg:col-span-8' : 'lg:col-span-7'} bg-white border border-slate-200 rounded-xl p-5 sm:p-6 shadow-sm space-y-5`}>
+                <div className={`${stockEntryMode === 'batch' ? 'lg:col-span-8' : 'lg:col-span-7'} bg-white border border-slate-200/80 rounded-2xl p-6 shadow-xs space-y-5`}>
               
-              <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+              <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
                 <div>
-                  <h3 className="font-black text-base text-[#0A192F] font-['Chivo'] tracking-tight">
+                  <h3 className="font-black text-base text-slate-900 font-['Chivo'] tracking-tight">
                     {editingPartId ? 'EDIT INVENTORY ITEM' : 'STOCK INVENTORY REGISTRATION'}
                   </h3>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-500 mt-0.5">
                     Room B13 Kirinyaga Crescent • Cloud Firestore Synced Catalog
                   </p>
                 </div>
@@ -1675,12 +1668,12 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                 {editingPartId ? (
                   <button
                     onClick={handleResetForm}
-                    className="text-xs text-rose-600 hover:underline font-bold"
+                    className="text-xs text-rose-600 hover:text-rose-700 font-bold hover:underline cursor-pointer"
                   >
                     Cancel Editing
                   </button>
                 ) : (
-                  <div className="text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full font-bold flex items-center gap-1">
+                  <div className="text-[11px] text-emerald-800 bg-emerald-50/80 border border-emerald-200 px-3 py-1 rounded-full font-bold flex items-center gap-1.5">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                     <span>Auto Category Photos</span>
                   </div>
@@ -1689,17 +1682,17 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
 
               {/* Mode Switcher: Single Item Entry vs Batch Multi-Product Entry */}
               {!editingPartId && (
-                <div className="p-1 bg-slate-100 rounded-xl flex items-center gap-1.5">
+                <div className="p-1 bg-slate-100/80 rounded-xl flex items-center gap-1.5 border border-slate-200/60">
                   <button
                     type="button"
                     onClick={() => setStockEntryMode('single')}
                     className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
                       stockEntryMode === 'single'
-                        ? 'bg-white text-[#0A192F] shadow-xs'
+                        ? 'bg-white text-slate-900 shadow-xs'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    <Package className="w-4 h-4 text-blue-700" />
+                    <Package className="w-4 h-4 text-blue-600" />
                     <span>Single Product Entry</span>
                   </button>
 
@@ -1708,13 +1701,13 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                     onClick={() => setStockEntryMode('batch')}
                     className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
                       stockEntryMode === 'batch'
-                        ? 'bg-[#0A192F] text-white shadow-xs'
+                        ? 'bg-slate-900 text-white shadow-xs'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
                     <Layers className="w-4 h-4 text-emerald-400" />
-                    <span>Batch Entry (Multiple of Same Category)</span>
-                    <span className="px-1.5 py-0.2 bg-emerald-500 text-white text-[10px] rounded-full uppercase font-bold">Fast</span>
+                    <span>Batch Entry (Multiple Items)</span>
+                    <span className="px-1.5 py-0.2 bg-emerald-500 text-white text-[10px] rounded-full uppercase font-mono font-bold">Fast</span>
                   </button>
                 </div>
               )}
@@ -2444,31 +2437,31 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
 
           {/* Right: Live Registered Inventory List (5 Cols or Full Width) */}
           <div className={isAdmin ? `${stockEntryMode === 'batch' ? 'lg:col-span-4' : 'lg:col-span-5'} space-y-4` : "w-full space-y-4"}>
-              <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-bold text-sm text-[#0A192F] uppercase tracking-wider font-mono">
+              <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs space-y-3.5">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <h3 className="font-bold text-sm text-slate-900 uppercase tracking-wider font-mono">
                     Stocked Inventory ({parts.length})
                   </h3>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => setShowPrintBookletModal(true)}
-                      className="px-2.5 py-1 rounded bg-blue-50 text-blue-800 border border-blue-200 hover:bg-blue-100 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                      className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
                       title="Print Well-Arranged Product Catalog Booklet (Photos, OEM Codes, Descriptions)"
                     >
-                      <Printer className="w-3.5 h-3.5 text-blue-700" />
+                      <Printer className="w-3.5 h-3.5" />
                       <span>Print Booklet</span>
                     </button>
                     <button
                       onClick={refreshPartsList}
-                      className="text-xs text-slate-500 hover:text-slate-900 flex items-center gap-1 cursor-pointer"
+                      className="text-xs text-slate-500 hover:text-slate-900 flex items-center gap-1 cursor-pointer transition-colors"
                     >
                       <RefreshCw className="w-3 h-3" /> Refresh
                     </button>
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   <div className="flex items-center justify-between gap-2">
                     <div className="relative flex-1">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
@@ -2476,23 +2469,23 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                         type="text"
                         value={inventorySearch}
                         onChange={(e) => setInventorySearch(e.target.value)}
-                        placeholder="Search stock by name, YB No, OEM..."
-                        className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-blue-700"
+                        placeholder="Search stock by name, OEM..."
+                        className="w-full pl-9 pr-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-slate-800 transition-colors"
                       />
                     </div>
                     <button
                       type="button"
                       onClick={() => setInventoryFilterLowStock(!inventoryFilterLowStock)}
-                      className={`px-2.5 py-1.5 rounded text-[11px] font-bold flex items-center gap-1 shrink-0 transition-colors border cursor-pointer ${
+                      className={`px-3 py-2 rounded-xl text-[11px] font-bold flex items-center gap-1.5 shrink-0 transition-all border cursor-pointer ${
                         inventoryFilterLowStock
-                          ? 'bg-amber-600 text-white border-amber-600'
-                          : 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100'
+                          ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                          : 'bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100'
                       }`}
                       title="Toggle Low Stock Filter (< 5)"
                     >
                       <AlertTriangle className="w-3 h-3" />
                       <span>Low Stock (&lt;5)</span>
-                      <span className="ml-0.5 px-1 py-0.2 text-[9px] bg-white/30 rounded">
+                      <span className="ml-0.5 px-1.5 py-0.2 text-[9px] bg-white/30 rounded-full font-mono">
                         {parts.filter((p) => p.stock < 5).length}
                       </span>
                     </button>
@@ -2510,9 +2503,9 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                           key={cat}
                           type="button"
                           onClick={() => setInventoryCategory(cat)}
-                          className={`px-2.5 py-1 rounded-md text-[11px] font-medium whitespace-nowrap transition-colors cursor-pointer border flex items-center gap-1 shrink-0 ${
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-medium whitespace-nowrap transition-colors cursor-pointer border flex items-center gap-1.5 shrink-0 ${
                             isSelected
-                              ? 'bg-[#0A192F] text-white border-[#0A192F]'
+                              ? 'bg-slate-900 text-white border-slate-900 shadow-2xs'
                               : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-200'
                           }`}
                         >
@@ -2530,7 +2523,7 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
               </div>
 
               {/* Items List */}
-              <div className="space-y-2 max-h-[580px] overflow-y-auto pr-1">
+              <div className="space-y-2.5 max-h-[580px] overflow-y-auto pr-1">
                 {parts
                   .filter((p) => {
                     const matchesCat = inventoryCategory === 'All Parts' || p.category === inventoryCategory;
@@ -2545,15 +2538,15 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                   .map((part) => (
                     <div
                       key={part.id}
-                      className={`p-3 bg-white border rounded-lg flex items-center justify-between gap-3 shadow-xs hover:border-slate-300 ${
+                      className={`p-3.5 bg-white border rounded-xl flex items-center justify-between gap-3 shadow-xs hover:border-slate-300 transition-colors ${
                         part.stock <= 0
-                          ? 'border-rose-300 bg-rose-50/30'
+                          ? 'border-rose-200 bg-rose-50/20'
                           : part.stock < 5
-                          ? 'border-amber-300 bg-amber-50/20'
-                          : 'border-slate-200'
+                          ? 'border-amber-200 bg-amber-50/20'
+                          : 'border-slate-200/80'
                       }`}
                     >
-                      <div className="w-12 h-12 bg-slate-50 border border-slate-200 rounded p-1 flex items-center justify-center shrink-0">
+                      <div className="w-12 h-12 bg-slate-50 border border-slate-200/80 rounded-lg p-1 flex items-center justify-center shrink-0">
                         <img
                           src={part.imageUrl}
                           alt={part.itemName}
@@ -2563,26 +2556,24 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 font-mono">
-                          <span className="font-bold text-xs text-[#0A192F]">{part.ybNo}</span>
-                          <span className="text-slate-400 text-[10px]">|</span>
-                          <span className="text-slate-500 text-[11px] truncate">{part.oem}</span>
+                          <span className="font-bold text-xs text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">OEM: {part.oem}</span>
                           {part.stock < 5 && (
-                            <span className="ml-1 text-[10px] font-sans font-bold bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded border border-amber-200 flex items-center gap-0.5">
+                            <span className="ml-1 text-[10px] font-sans font-bold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full border border-amber-200 flex items-center gap-0.5">
                               <AlertTriangle className="w-2.5 h-2.5 text-amber-700" />
                               Low Stock
                             </span>
                           )}
                         </div>
-                        <h4 className="font-bold text-xs text-slate-900 truncate mt-0.5">
+                        <h4 className="font-bold text-xs text-slate-900 truncate mt-1">
                           {part.itemName}
                         </h4>
                         <div className="flex items-center gap-2 mt-1 text-[11px] font-mono">
-                          <span className="font-bold text-blue-900">
+                          <span className="font-black text-slate-900">
                             KES {part.priceKes.toLocaleString()}
                           </span>
-                          <span className="text-slate-400">•</span>
-                          <span className={part.stock < 5 ? 'text-amber-700 font-bold' : 'text-slate-600'}>
-                            Stock: {part.stock} {part.stock < 5 ? '(Reorder Alert)' : ''}
+                          <span className="text-slate-300">•</span>
+                          <span className={part.stock < 5 ? 'text-amber-700 font-bold' : 'text-slate-500'}>
+                            Stock: {part.stock} {part.stock < 5 ? '(Reorder)' : ''}
                           </span>
                         </div>
                       </div>
@@ -2591,14 +2582,14 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                         <div className="flex items-center gap-1 shrink-0">
                           <button
                             onClick={() => handleEditPart(part)}
-                            className="p-1.5 text-blue-700 hover:bg-blue-50 rounded cursor-pointer"
+                            className="p-1.5 text-blue-700 hover:bg-blue-50 rounded-lg cursor-pointer transition-colors"
                             title="Edit Part"
                           >
                             <Edit3 className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleDeletePart(part)}
-                            className="p-1.5 text-rose-600 hover:bg-rose-50 rounded cursor-pointer"
+                            className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer transition-colors"
                             title="Delete Part"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -2619,13 +2610,15 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
           <div className="space-y-4">
             
             {/* Sales Performance Summary Cards (Admin & Staff) */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
-                <div className="flex items-center justify-between text-slate-500 text-xs mb-1">
-                  <span>Gross Sales</span>
-                  <DollarSign className="w-4 h-4 text-emerald-600" />
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between text-slate-500 text-xs mb-1.5">
+                  <span className="font-semibold uppercase tracking-wider text-[10px]">Gross Sales</span>
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                    <DollarSign className="w-4 h-4" />
+                  </div>
                 </div>
-                <div className="text-lg sm:text-xl font-black text-[#0A192F] font-mono">
+                <div className="text-xl sm:text-2xl font-black text-slate-900 font-mono tracking-tight">
                   KES {salesRecords.reduce((sum, s) => sum + s.totalKes, 0).toLocaleString()}
                 </div>
                 <div className="text-[11px] text-slate-500 mt-1">
@@ -2633,12 +2626,14 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                 </div>
               </div>
 
-              <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
-                <div className="flex items-center justify-between text-slate-500 text-xs mb-1">
-                  <span>M-Pesa Volume</span>
-                  <Receipt className="w-4 h-4 text-emerald-600" />
+              <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between text-slate-500 text-xs mb-1.5">
+                  <span className="font-semibold uppercase tracking-wider text-[10px]">M-Pesa Volume</span>
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                    <Receipt className="w-4 h-4" />
+                  </div>
                 </div>
-                <div className="text-lg sm:text-xl font-black text-emerald-700 font-mono">
+                <div className="text-xl sm:text-2xl font-black text-emerald-700 font-mono tracking-tight">
                   KES {salesRecords.filter(s => s.paymentMethod === 'M-PESA').reduce((sum, s) => sum + s.totalKes, 0).toLocaleString()}
                 </div>
                 <div className="text-[11px] text-slate-500 mt-1">
@@ -2646,12 +2641,14 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                 </div>
               </div>
 
-              <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
-                <div className="flex items-center justify-between text-slate-500 text-xs mb-1">
-                  <span>Cash Collections</span>
-                  <CreditCard className="w-4 h-4 text-blue-600" />
+              <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between text-slate-500 text-xs mb-1.5">
+                  <span className="font-semibold uppercase tracking-wider text-[10px]">Cash Collections</span>
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center">
+                    <CreditCard className="w-4 h-4" />
+                  </div>
                 </div>
-                <div className="text-lg sm:text-xl font-black text-blue-800 font-mono">
+                <div className="text-xl sm:text-2xl font-black text-slate-900 font-mono tracking-tight">
                   KES {salesRecords.filter(s => s.paymentMethod === 'CASH').reduce((sum, s) => sum + s.totalKes, 0).toLocaleString()}
                 </div>
                 <div className="text-[11px] text-slate-500 mt-1">
@@ -2660,12 +2657,14 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
               </div>
 
               {isAdmin ? (
-                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs bg-linear-to-br from-amber-50/50 to-white">
-                  <div className="flex items-center justify-between text-slate-600 text-xs mb-1">
-                    <span className="font-bold text-amber-900">Gross Margin (Est.)</span>
-                    <TrendingUp className="w-4 h-4 text-amber-600" />
+                <div className="bg-gradient-to-br from-amber-50/70 to-white border border-amber-200/80 rounded-2xl p-5 shadow-xs hover:shadow-md transition-shadow">
+                  <div className="flex items-center justify-between text-slate-600 text-xs mb-1.5">
+                    <span className="font-bold text-amber-900 uppercase tracking-wider text-[10px]">Gross Margin (Est.)</span>
+                    <div className="w-8 h-8 rounded-lg bg-amber-100/80 text-amber-800 flex items-center justify-center">
+                      <TrendingUp className="w-4 h-4" />
+                    </div>
                   </div>
-                  <div className="text-lg sm:text-xl font-black text-amber-900 font-mono">
+                  <div className="text-xl sm:text-2xl font-black text-amber-950 font-mono tracking-tight">
                     KES {salesRecords.reduce((acc, sale) => {
                       const profit = sale.items.reduce((iAcc, item) => {
                         const cost = (item.part.buyingPriceKes || 0) * item.quantity;
@@ -2675,16 +2674,18 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                     }, 0).toLocaleString()}
                   </div>
                   <div className="text-[11px] text-amber-800 mt-1">
-                    Revenue minus stock buying cost
+                    Revenue minus stock purchase cost
                   </div>
                 </div>
               ) : (
-                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
-                  <div className="flex items-center justify-between text-slate-500 text-xs mb-1">
-                    <span>Active Terminal</span>
-                    <Warehouse className="w-4 h-4 text-slate-600" />
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs hover:shadow-md transition-shadow">
+                  <div className="flex items-center justify-between text-slate-500 text-xs mb-1.5">
+                    <span className="font-semibold uppercase tracking-wider text-[10px]">Active Terminal</span>
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center">
+                      <Warehouse className="w-4 h-4" />
+                    </div>
                   </div>
-                  <div className="text-sm font-bold text-[#0A192F] font-mono">
+                  <div className="text-base font-bold text-slate-900 font-mono">
                     ROOM B13
                   </div>
                   <div className="text-[11px] text-slate-500 mt-1">
@@ -2695,10 +2696,10 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
             </div>
 
             {/* Sales Audit Log Table */}
-            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-xs space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
                 <div>
-                  <h3 className="font-black text-base text-[#0A192F] font-['Chivo'] tracking-tight">
+                  <h3 className="font-black text-base text-slate-900 font-['Chivo'] tracking-tight">
                     COUNTER SALES AUDIT LOG
                   </h3>
                   <p className="text-xs text-slate-500">
@@ -2707,22 +2708,22 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                 </div>
 
                 {/* Filters */}
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2.5">
                   <div className="relative">
-                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
                       value={salesSearch}
                       onChange={(e) => setSalesSearch(e.target.value)}
                       placeholder="Search receipt, cashier, customer..."
-                      className="pl-8 pr-3 py-1 bg-slate-50 border border-slate-300 rounded-lg text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-blue-700 w-48 sm:w-60 font-mono"
+                      className="pl-9 pr-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-slate-800 w-48 sm:w-64 font-mono transition-colors"
                     />
                   </div>
 
                   <select
                     value={salesPaymentFilter}
                     onChange={(e: any) => setSalesPaymentFilter(e.target.value)}
-                    className="py-1 px-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold text-slate-700 focus:bg-white focus:outline-none focus:border-blue-700"
+                    className="py-2 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:bg-white focus:outline-none focus:border-slate-800 transition-colors"
                   >
                     <option value="ALL">All Payments</option>
                     <option value="M-PESA">M-PESA</option>
@@ -2739,18 +2740,18 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-xs text-left">
-                    <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 font-mono uppercase">
+                  <table className="w-full text-xs text-left border-collapse">
+                    <thead className="bg-slate-50/80 text-slate-600 border-b border-slate-200 font-mono uppercase tracking-wider text-[11px]">
                       <tr>
-                        <th className="py-2.5 px-3">Receipt No</th>
-                        <th className="py-2.5 px-3">Date & Time</th>
-                        <th className="py-2.5 px-3">Cashier</th>
-                        <th className="py-2.5 px-3">Customer</th>
-                        <th className="py-2.5 px-3">Items Sold</th>
-                        <th className="py-2.5 px-3">Payment</th>
-                        <th className="py-2.5 px-3">M-Pesa Ref</th>
-                        <th className="py-2.5 px-3 text-right">Total (KES)</th>
-                        <th className="py-2.5 px-3 text-center">Action</th>
+                        <th className="py-3 px-3.5">Receipt No</th>
+                        <th className="py-3 px-3.5">Date & Time</th>
+                        <th className="py-3 px-3.5">Cashier</th>
+                        <th className="py-3 px-3.5">Customer</th>
+                        <th className="py-3 px-3.5">Items Sold</th>
+                        <th className="py-3 px-3.5">Payment</th>
+                        <th className="py-3 px-3.5">M-Pesa Ref</th>
+                        <th className="py-3 px-3.5 text-right">Total (KES)</th>
+                        <th className="py-3 px-3.5 text-center">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-mono">
@@ -2764,19 +2765,19 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                             (sale.mpesaRef && sale.mpesaRef.toLowerCase().includes(q)) ||
                             (sale.customerName && sale.customerName.toLowerCase().includes(q)) ||
                             (sale.cashierName && sale.cashierName.toLowerCase().includes(q)) ||
-                            sale.items.some(i => i.part.itemName.toLowerCase().includes(q) || i.part.ybNo.toLowerCase().includes(q));
+                            sale.items.some(i => i.part.itemName.toLowerCase().includes(q) || (i.part.oem && i.part.oem.toLowerCase().includes(q)));
                           return matchesPay && matchesText;
                         })
                         .map((sale) => (
-                          <tr key={sale.id} className="hover:bg-slate-50">
-                            <td className="py-2.5 px-3 font-bold text-blue-900">{sale.receiptNumber}</td>
-                            <td className="py-2.5 px-3 text-slate-500">
+                          <tr key={sale.id} className="hover:bg-slate-50/80 transition-colors">
+                            <td className="py-3 px-3.5 font-bold text-slate-900">{sale.receiptNumber}</td>
+                            <td className="py-3 px-3.5 text-slate-500">
                               {new Date(sale.timestamp).toLocaleDateString()} {new Date(sale.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </td>
-                            <td className="py-2.5 px-3 text-slate-700 font-sans">
+                            <td className="py-3 px-3.5 text-slate-700 font-sans">
                               {sale.cashierName || 'Counter Staff'}
                             </td>
-                            <td className="py-2.5 px-3 text-slate-700 font-sans">
+                            <td className="py-3 px-3.5 text-slate-700 font-sans">
                               {sale.customerName ? (
                                 <div>
                                   <div className="font-bold text-slate-900">{sale.customerName}</div>
@@ -2786,19 +2787,27 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                                 <span className="text-slate-400">Walk-in Client</span>
                               )}
                             </td>
-                            <td className="py-2.5 px-3 text-slate-700 font-sans">
-                              {sale.items.map((i) => `${i.quantity}x ${i.part.ybNo}`).join(', ')}
+                            <td className="py-3 px-3.5 text-slate-700 font-sans">
+                              {sale.items.map((i) => `${i.quantity}x ${i.part.itemName}`).join(', ')}
                             </td>
-                            <td className="py-2.5 px-3 font-bold text-slate-900">{sale.paymentMethod}</td>
-                            <td className="py-2.5 px-3 text-slate-600">{sale.mpesaRef || '-'}</td>
-                            <td className="py-2.5 px-3 text-right font-bold text-[#0A192F]">
+                            <td className="py-3 px-3.5">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                sale.paymentMethod === 'M-PESA' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' :
+                                sale.paymentMethod === 'CASH' ? 'bg-blue-50 text-blue-800 border border-blue-200' :
+                                'bg-slate-100 text-slate-800'
+                              }`}>
+                                {sale.paymentMethod}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3.5 text-slate-600">{sale.mpesaRef || '-'}</td>
+                            <td className="py-3 px-3.5 text-right font-black text-slate-900">
                               KES {sale.totalKes.toLocaleString()}
                             </td>
-                            <td className="py-2.5 px-3 text-center">
+                            <td className="py-3 px-3.5 text-center">
                               <div className="flex items-center justify-center gap-2">
                                 <button
                                   onClick={() => setCompletedSale(sale)}
-                                  className="text-blue-700 hover:text-blue-900 font-bold underline cursor-pointer"
+                                  className="text-blue-700 hover:text-blue-900 font-bold underline cursor-pointer text-xs"
                                 >
                                   Receipt
                                 </button>
@@ -2807,7 +2816,7 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                                     onClick={() => handleDeleteSale(sale)}
                                     disabled={deletingSaleId === sale.id}
                                     title="Delete/Void this transaction"
-                                    className="text-rose-600 hover:text-rose-800 p-1 rounded hover:bg-rose-50 cursor-pointer"
+                                    className="text-rose-600 hover:text-rose-800 p-1.5 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
                                   >
                                     {deletingSaleId === sale.id ? (
                                       <RefreshCw className="w-3.5 h-3.5 animate-spin" />
