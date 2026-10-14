@@ -10,6 +10,7 @@ import { LocationAndContactSection } from './components/LocationAndContactSectio
 import { POSView } from './components/POSView';
 import { PhoneCameraCaptureView } from './components/PhoneCameraCaptureView';
 import LoadingScreen from './components/LoadingScreen';
+import { notify, confirmAction } from './components/AppNotifications';
 import { AutoPart } from './types';
 import { 
   PRIMARY_PHONE_DISPLAY, 
@@ -149,6 +150,7 @@ export const App: React.FC = () => {
       }
       return [...prev, { part, quantity: 1 }];
     });
+    notify.success(`${part.itemName} added to your cart.`, { title: 'Added to Cart', id: `cart-add-${part.id}` });
   };
 
   const handleUpdateCartQty = (partId: string, delta: number) => {
@@ -165,12 +167,29 @@ export const App: React.FC = () => {
     );
   };
 
-  const handleRemoveFromCart = (partId: string) => {
-    setCartItems((prev) => prev.filter((item) => item.part.id !== partId));
+  const handleRemoveFromCart = async (partId: string) => {
+    const item = cartItems.find((i) => i.part.id === partId);
+    const confirmed = await confirmAction({
+      title: 'Remove item from cart?',
+      message: item ? `Do you want to remove "${item.part.itemName}" from your cart?` : 'Do you want to remove this item from your cart?',
+      variant: 'delete',
+      confirmText: 'Yes, Remove',
+    });
+    if (!confirmed) return;
+    setCartItems((prev) => prev.filter((i) => i.part.id !== partId));
+    notify.info(item ? `${item.part.itemName} removed from your cart.` : 'Item removed from your cart.', { title: 'Item Removed' });
   };
 
-  const handleClearCart = () => {
+  const handleClearCart = async () => {
+    const confirmed = await confirmAction({
+      title: 'Clear your cart?',
+      message: `Do you want to remove all ${cartItems.length} item(s) from your cart?`,
+      variant: 'delete',
+      confirmText: 'Yes, Clear Cart',
+    });
+    if (!confirmed) return;
     setCartItems([]);
+    notify.info('All items were removed from your cart.', { title: 'Cart Cleared' });
   };
 
   const cartTotalKes = cartItems.reduce(

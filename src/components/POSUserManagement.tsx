@@ -24,6 +24,7 @@ import {
   updatePOSUser, 
   deletePOSUser 
 } from '../services/authService';
+import { notify, confirmAction } from './AppNotifications';
 
 interface POSUserManagementProps {
   currentUser: POSUser;
@@ -41,7 +42,6 @@ export const POSUserManagement: React.FC<POSUserManagementProps> = ({ currentUse
   const [newRole, setNewRole] = useState<UserRole>('cashier');
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [formError, setFormError] = useState('');
-  const [formSuccess, setFormSuccess] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Reset Password State
@@ -49,10 +49,6 @@ export const POSUserManagement: React.FC<POSUserManagementProps> = ({ currentUse
   const [resetError, setResetError] = useState('');
   const [resetSuccess, setResetSuccess] = useState('');
 
-  // Delete User Confirmation Modal State
-  const [userToDelete, setUserToDelete] = useState<POSUser | null>(null);
-  const [isDeletingUser, setIsDeletingUser] = useState(false);
-  const [actionNotice, setActionNotice] = useState<string | null>(null);
 
   // Subscribe to real-time users from Firestore
   useEffect(() => {
@@ -65,7 +61,6 @@ export const POSUserManagement: React.FC<POSUserManagementProps> = ({ currentUse
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
-    setFormSuccess('');
 
     if (!newUsername.trim()) {
       setFormError('Please provide a username.');
@@ -75,6 +70,14 @@ export const POSUserManagement: React.FC<POSUserManagementProps> = ({ currentUse
       setFormError('Password must be at least 4 characters long.');
       return;
     }
+
+    const confirmed = await confirmAction({
+      title: 'Add this staff account?',
+      message: `Do you want to add "${newUsername.trim()}" as a ${newRole === 'admin' ? 'Admin' : 'Cashier'}?`,
+      variant: 'add',
+      confirmText: 'Yes, Add User',
+    });
+    if (!confirmed) return;
 
     setIsSubmitting(true);
     const result = await createPOSUser({
@@ -87,47 +90,68 @@ export const POSUserManagement: React.FC<POSUserManagementProps> = ({ currentUse
     setIsSubmitting(false);
 
     if (result.success) {
-      setFormSuccess(`User "${result.user?.username}" created successfully in Firebase!`);
+      notify.success(`User "${result.user?.username}" was added.`, { title: 'User Added' });
       setNewDisplayName('');
       setNewUsername('');
       setNewPassword('');
       setNewRole('cashier');
-      setTimeout(() => {
-        setFormSuccess('');
-        setShowAddModal(false);
-      }, 1500);
+      setShowAddModal(false);
     } else {
       setFormError(result.message || 'Failed to create user.');
+      notify.error(result.message || 'Failed to create user.', { title: 'Could Not Add User' });
     }
   };
 
   const handleToggleActive = async (user: POSUser) => {
     if (user.username.toLowerCase() === 'devine2026') {
-      setActionNotice('The primary Admin account cannot be deactivated.');
-      setTimeout(() => setActionNotice(null), 3000);
+      notify.warning('The primary Admin account cannot be deactivated.', { title: 'Not Allowed' });
       return;
     }
     const nextStatus = !user.isActive;
-    await updatePOSUser(user.id, { isActive: nextStatus });
+    const confirmed = await confirmAction({
+      title: nextStatus ? 'Activate this account?' : 'Deactivate this account?',
+      message: nextStatus
+        ? `Do you want to restore POS access for @${user.username}?`
+        : `Do you want to block @${user.username} from logging into the POS?`,
+      variant: nextStatus ? 'update' : 'warning',
+      confirmText: nextStatus ? 'Yes, Activate' : 'Yes, Deactivate',
+    });
+    if (!confirmed) return;
+    const res = await updatePOSUser(user.id, { isActive: nextStatus });
+    if (res.success) {
+      notify.success(`@${user.username} was ${nextStatus ? 'activated' : 'deactivated'}.`, {
+        title: nextStatus ? 'User Activated' : 'User Deactivated',
+      });
+    } else {
+      notify.error(res.message || 'Could not update user status.', { title: 'Update Failed' });
+    }
   };
 
-  const handleDelete = (user: POSUser) => {
+  const handleDelete = async (user: POSUser) => {
     if (user.username.toLowerCase() === 'devine2026') {
-      setActionNotice('The primary Admin account cannot be deleted.');
-      setTimeout(() => setActionNotice(null), 3000);
+      notify.warning('The primary Admin account cannot be deleted.', { title: 'Not Allowed' });
       return;
     }
-    setUserToDelete(user);
-  };
-
-  const confirmDeleteUser = async () => {
-    if (!userToDelete) return;
-    setIsDeletingUser(true);
-    try {
-      await deletePOSUser(userToDelete.id);
-    } finally {
-      setIsDeletingUser(false);
-      setUserToDelete(null);
+    const confirmed = await confirmAction({
+      title: 'Delete staff account?',
+      message: 'Do you want to permanently remove this user from JoyDivine POS?',
+      variant: 'delete',
+      confirmText: 'Yes, Delete User',
+      details: (
+        <>
+          <div className="font-bold text-slate-900 text-sm">{user.displayName}</div>
+          <div className="font-mono text-slate-500">
+            @{user.username} • Role: {user.role.toUpperCase()}
+          </div>
+        </>
+      ),
+    });
+    if (!confirmed) return;
+    const res = await deletePOSUser(user.id);
+    if (res.success) {
+      notify.success(`@${user.username} was deleted.`, { title: 'User Deleted' });
+    } else {
+      notify.error(res.message || 'Could not delete user.', { title: 'Delete Failed' });
     }
   };
 
@@ -138,15 +162,19 @@ export const POSUserManagement: React.FC<POSUserManagementProps> = ({ currentUse
       setResetError('New password must be at least 4 characters.');
       return;
     }
+    const confirmed = await confirmAction({
+      title: 'Reset this password?',
+      message: `Do you want to set a new password for @${showResetPassModal.username}?`,
+      variant: 'update',
+      confirmText: 'Yes, Reset Password',
+    });
+    if (!confirmed) return;
 
     const res = await updatePOSUser(showResetPassModal.id, { password: resetPasswordVal.trim() });
     if (res.success) {
-      setResetSuccess(`Password for ${showResetPassModal.username} updated successfully!`);
-      setTimeout(() => {
-        setResetSuccess('');
-        setShowResetPassModal(null);
-        setResetPasswordVal('');
-      }, 1500);
+      notify.success(`Password for @${showResetPassModal.username} was updated.`, { title: 'Password Reset' });
+      setShowResetPassModal(null);
+      setResetPasswordVal('');
     } else {
       setResetError('Could not update password.');
     }
@@ -531,13 +559,6 @@ export const POSUserManagement: React.FC<POSUserManagementProps> = ({ currentUse
                 </div>
               )}
 
-              {formSuccess && (
-                <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-lg flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
-                  <span>{formSuccess}</span>
-                </div>
-              )}
-
               <div className="flex items-center justify-end gap-2 pt-2">
                 <button
                   type="button"
@@ -628,60 +649,6 @@ export const POSUserManagement: React.FC<POSUserManagementProps> = ({ currentUse
             </form>
 
           </div>
-        </div>
-      )}
-
-      {/* Delete User Confirmation Modal */}
-      {userToDelete && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full border border-slate-200 overflow-hidden">
-            <div className="p-5 border-b border-slate-100 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 shrink-0">
-                <Trash2 className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-bold text-base text-slate-900">Delete Staff Account?</h3>
-                <p className="text-xs text-slate-500">Permanently revoke this user's POS access.</p>
-              </div>
-            </div>
-
-            <div className="p-5 bg-slate-50 text-xs text-slate-700 space-y-2">
-              <div className="p-3 bg-white rounded-lg border border-slate-200">
-                <div className="font-bold text-slate-900 text-sm">{userToDelete.displayName}</div>
-                <div className="font-mono text-slate-500 mt-0.5">@{userToDelete.username} • Role: {userToDelete.role.toUpperCase()}</div>
-              </div>
-              <p className="text-slate-500 text-[11px]">
-                Are you sure you want to permanently remove this user from JoyDivine POS?
-              </p>
-            </div>
-
-            <div className="p-4 bg-white border-t border-slate-100 flex items-center justify-end gap-2.5">
-              <button
-                type="button"
-                disabled={isDeletingUser}
-                onClick={() => setUserToDelete(null)}
-                className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50 cursor-pointer disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={isDeletingUser}
-                onClick={confirmDeleteUser}
-                className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>{isDeletingUser ? 'Deleting...' : 'Delete User'}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Notice Banner */}
-      {actionNotice && (
-        <div className="fixed bottom-4 right-4 z-50 p-3 bg-slate-900 text-white text-xs font-semibold rounded-lg shadow-lg border border-slate-700 animate-in fade-in">
-          {actionNotice}
         </div>
       )}
 
