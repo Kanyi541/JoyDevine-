@@ -17,6 +17,7 @@ import { AutoPart } from '../types';
 import { getAbsoluteImageUrl, getCategoryDefaultImage } from '../services/productImageService';
 import { PRIMARY_PHONE_DISPLAY, SECONDARY_PHONE_1_DISPLAY, SECONDARY_PHONE_2_DISPLAY } from '../services/whatsappService';
 import { fetchDirectlyFromFirebase } from '../services/inventoryStorage';
+import { PrintableCatalogView } from './PrintableCatalogView';
 
 interface PrintBookletModalProps {
   isOpen: boolean;
@@ -89,57 +90,11 @@ export const PrintBookletModal: React.FC<PrintBookletModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 bg-[#0A192F]/85 backdrop-blur-xs flex flex-col items-center justify-center p-2 sm:p-4 overflow-y-auto">
       
-      {/* Scoped Print Styles: Customer Booklet Presentation */}
-      <style>{`
-        @media print {
-          body * {
-            visibility: hidden !important;
-          }
-          #print-booklet-content, #print-booklet-content * {
-            visibility: visible !important;
-          }
-          #print-booklet-content {
-            position: static !important;
-            width: 100% !important;
-            overflow: visible !important;
-          }
-          .booklet-no-print {
-            display: none !important;
-          }
-          .booklet-cover-page {
-            page-break-after: always !important;
-            break-after: page !important;
-            min-height: 250mm !important;
-            display: flex !important;
-            flex-direction: column !important;
-            justify-content: space-between !important;
-            padding: 20mm 15mm !important;
-            background: #0A192F !important;
-            color: white !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          .booklet-catalog-page {
-            page-break-before: always !important;
-            break-before: page !important;
-            padding: 12mm 10mm !important;
-          }
-          .booklet-card {
-            break-inside: avoid !important;
-            page-break-inside: avoid !important;
-            border: 1px solid #cbd5e1 !important;
-            background: #ffffff !important;
-            box-shadow: none !important;
-          }
-          @page {
-            size: A4 portrait;
-            margin: 0mm;
-          }
-        }
-      `}</style>
-
-      {/* Main Modal Card */}
-      <div id="print-booklet-container" className="w-full max-w-5xl bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col max-h-[95vh] overflow-hidden">
+      {/* Dedicated Printable View - only visible when printing */}
+      <PrintableCatalogView parts={filteredParts} category={selectedCategory} />
+      
+      {/* Main Modal Card (UI for Preview) */}
+      <div id="print-booklet-container" className="booklet-no-print w-full max-w-5xl bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col max-h-[95vh] overflow-hidden">
         
         {/* Top Control Bar (Screen only, hidden on print) */}
         <div className="booklet-no-print bg-[#0A192F] text-white p-4 border-b border-slate-700 flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0">
