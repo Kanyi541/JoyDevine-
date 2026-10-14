@@ -150,6 +150,7 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
   // Inventory / Stock Registration Form State
   const [stockEntryMode, setStockEntryMode] = useState<'single' | 'batch'>('single');
   const [editingPartId, setEditingPartId] = useState<string | null>(null);
+  const [showRegistrationForm, setShowRegistrationForm] = useState(false);
   const [itemName, setItemName] = useState('');
   const [ybNo, setYbNo] = useState('');
   const [oem, setOem] = useState('');
@@ -438,6 +439,8 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
 
   // Automatic Image Reflection when typing YB No or OEM or Item Name
   const checkAndReflectImage = (query: { ybNo?: string; oem?: string; itemName?: string }) => {
+    // Don't override the image when editing an existing part
+    if (editingPartId) return;
     const foundImage = findSavedImageForPart(query);
     if (foundImage) {
       setImageUrl(foundImage);
@@ -480,6 +483,8 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
     setImageUrl(part.imageUrl);
     setCondition(part.condition);
     setImageAutoDetected(false);
+    setShowRegistrationForm(true);
+    setStockEntryMode('single');
     setActiveTab('register');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -487,6 +492,8 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
   // Category selection handler with automatic category image assignment
   const handleCategoryChange = (newCat: string) => {
     setCategory(newCat);
+    // When editing, don't override the existing image unless user explicitly changes it
+    if (editingPartId) return;
     // If current image is empty, or is any category preset image, auto-assign the new category photo
     const isPresetOrEmpty = !imageUrl || Object.values(CATEGORY_DEFAULT_IMAGES).includes(imageUrl) || imageAutoDetected;
     if (isPresetOrEmpty) {
@@ -503,6 +510,7 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
   // Reset form
   const handleResetForm = () => {
     setEditingPartId(null);
+    setShowRegistrationForm(false);
     setItemName('');
     setYbNo('');
     setOem('');
@@ -1649,10 +1657,10 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
               </div>
             )}
 
-            <div className={isAdmin ? "grid grid-cols-1 lg:grid-cols-12 gap-6" : "w-full"}>
+            <div className={isAdmin && showRegistrationForm ? "grid grid-cols-1 lg:grid-cols-12 gap-6" : "w-full"}>
               
               {/* Left: Registration Form (7 or 8 Cols) - Only visible to Admin */}
-              {isAdmin && (
+              {isAdmin && showRegistrationForm && (
                 <div className={`${stockEntryMode === 'batch' ? 'lg:col-span-8' : 'lg:col-span-7'} bg-white border border-slate-200/80 rounded-2xl p-6 shadow-xs space-y-5`}>
               
               <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
@@ -2436,13 +2444,28 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
           )}
 
           {/* Right: Live Registered Inventory List (5 Cols or Full Width) */}
-          <div className={isAdmin ? `${stockEntryMode === 'batch' ? 'lg:col-span-4' : 'lg:col-span-5'} space-y-4` : "w-full space-y-4"}>
+          <div className={isAdmin && showRegistrationForm ? `${stockEntryMode === 'batch' ? 'lg:col-span-4' : 'lg:col-span-5'} space-y-4` : "w-full space-y-4"}>
               <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs space-y-3.5">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                   <h3 className="font-bold text-sm text-slate-900 uppercase tracking-wider font-mono">
                     Stocked Inventory ({parts.length})
                   </h3>
                   <div className="flex items-center gap-2">
+                    {isAdmin && !showRegistrationForm && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowRegistrationForm(true);
+                          setEditingPartId(null);
+                          handleResetForm();
+                          setShowRegistrationForm(true);
+                        }}
+                        className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add New</span>
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => setShowPrintBookletModal(true)}
@@ -2523,7 +2546,12 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
               </div>
 
               {/* Items List */}
-              <div className="space-y-2.5 max-h-[580px] overflow-y-auto pr-1">
+              {/* Items Grid */}
+              <div className={`max-h-[580px] overflow-y-auto pr-1 grid gap-3 ${
+                isAdmin && showRegistrationForm
+                  ? 'grid-cols-1'
+                  : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+              }`}>
                 {parts
                   .filter((p) => {
                     const matchesCat = inventoryCategory === 'All Parts' || p.category === inventoryCategory;
@@ -2538,7 +2566,7 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                   .map((part) => (
                     <div
                       key={part.id}
-                      className={`p-3.5 bg-white border rounded-xl flex items-center justify-between gap-3 shadow-xs hover:border-slate-300 transition-colors ${
+                      className={`p-3 bg-white border rounded-xl flex flex-col gap-2 shadow-xs hover:border-slate-300 hover:shadow-sm transition-all ${
                         part.stock <= 0
                           ? 'border-rose-200 bg-rose-50/20'
                           : part.stock < 5
@@ -2546,53 +2574,58 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                           : 'border-slate-200/80'
                       }`}
                     >
-                      <div className="w-12 h-12 bg-slate-50 border border-slate-200/80 rounded-lg p-1 flex items-center justify-center shrink-0">
+                      {/* Image */}
+                      <div className="w-full aspect-square bg-slate-50 border border-slate-200/80 rounded-lg p-2 flex items-center justify-center overflow-hidden">
                         <img
                           src={part.imageUrl}
                           alt={part.itemName}
                           className="max-h-full max-w-full object-contain"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).src = '/productsimg/placeholder.svg';
+                          }}
                         />
                       </div>
 
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 font-mono">
-                          <span className="font-bold text-xs text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">OEM: {part.oem}</span>
+                      {/* Info */}
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-mono font-bold text-[10px] text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 truncate">OEM: {part.oem}</span>
                           {part.stock < 5 && (
-                            <span className="ml-1 text-[10px] font-sans font-bold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full border border-amber-200 flex items-center gap-0.5">
+                            <span className="text-[9px] font-sans font-bold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full border border-amber-200 flex items-center gap-0.5 whitespace-nowrap">
                               <AlertTriangle className="w-2.5 h-2.5 text-amber-700" />
-                              Low Stock
+                              Low
                             </span>
                           )}
                         </div>
-                        <h4 className="font-bold text-xs text-slate-900 truncate mt-1">
+                        <h4 className="font-bold text-xs text-slate-900 line-clamp-2 leading-tight">
                           {part.itemName}
                         </h4>
-                        <div className="flex items-center gap-2 mt-1 text-[11px] font-mono">
+                        <div className="flex items-center justify-between text-[11px] font-mono">
                           <span className="font-black text-slate-900">
                             KES {part.priceKes.toLocaleString()}
                           </span>
-                          <span className="text-slate-300">•</span>
-                          <span className={part.stock < 5 ? 'text-amber-700 font-bold' : 'text-slate-500'}>
-                            Stock: {part.stock} {part.stock < 5 ? '(Reorder)' : ''}
+                          <span className={`text-[10px] ${part.stock < 5 ? 'text-amber-700 font-bold' : 'text-slate-500'}`}>
+                            Stk: {part.stock}
                           </span>
                         </div>
                       </div>
 
+                      {/* Actions */}
                       {isAdmin && (
-                        <div className="flex items-center gap-1 shrink-0">
+                        <div className="flex items-center justify-end gap-1 pt-1 border-t border-slate-100">
                           <button
                             onClick={() => handleEditPart(part)}
                             className="p-1.5 text-blue-700 hover:bg-blue-50 rounded-lg cursor-pointer transition-colors"
                             title="Edit Part"
                           >
-                            <Edit3 className="w-4 h-4" />
+                            <Edit3 className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => handleDeletePart(part)}
                             className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer transition-colors"
                             title="Delete Part"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       )}
