@@ -91,9 +91,7 @@ export const PrintBookletModal: React.FC<PrintBookletModalProps> = ({
             visibility: visible !important;
           }
           #print-booklet-content {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
+            position: static !important;
             width: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
@@ -108,7 +106,7 @@ export const PrintBookletModal: React.FC<PrintBookletModalProps> = ({
           .booklet-cover-page {
             page-break-after: always !important;
             break-after: page !important;
-            min-height: 100vh !important;
+            height: 270mm !important;
             display: flex !important;
             flex-direction: column !important;
             justify-content: space-between !important;
