@@ -92,12 +92,17 @@ export const PrintBookletModal: React.FC<PrintBookletModalProps> = ({
       {/* Scoped Print Styles: Customer Booklet Presentation */}
       <style>{`
         @media print {
-          body > :not(#print-booklet-container) {
-            display: none !important;
+          body * {
+            visibility: hidden !important;
+          }
+          #print-booklet-container, #print-booklet-container * {
+            visibility: visible !important;
           }
           #print-booklet-container {
-            display: block !important;
-            position: static !important;
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
           }
           .booklet-no-print {
             display: none !important;
