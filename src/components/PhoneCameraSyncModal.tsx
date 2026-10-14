@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
+import { notify, confirmAction } from './AppNotifications';
 import { 
   XLg as X, 
   Camera, 
@@ -98,10 +99,18 @@ export const PhoneCameraSyncModal: React.FC<PhoneCameraSyncModalProps> = ({
 
   const handleDisconnect = async () => {
     if (!sessionId) return;
+    const confirmed = await confirmAction({
+      title: 'Disconnect phone camera?',
+      message: 'Do you want to unpair this phone? You will need to scan the QR code again to reconnect.',
+      variant: 'warning',
+      confirmText: 'Yes, Disconnect',
+    });
+    if (!confirmed) return;
     await disconnectCameraSession(sessionId);
     setSessionId(null);
     setSessionData(null);
     onClose();
+    notify.info('The phone camera was disconnected.', { title: 'Phone Disconnected' });
   };
 
   const isConnected = sessionData?.status === 'connected';

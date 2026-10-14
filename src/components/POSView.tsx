@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import toast, { Toaster } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'motion/react';
+import { notify, confirmAction } from './AppNotifications';
 import { 
   Lock, 
   Unlock, 
@@ -183,7 +183,6 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
     createEmptyBatchRow(2),
   ]);
   const [isSavingBatch, setIsSavingBatch] = useState(false);
-  const [batchFeedback, setBatchFeedback] = useState<string | null>(null);
 
   // Live Parts & Search
   const [parts, setParts] = useState<AutoPart[]>(getStoredParts());
@@ -203,17 +202,10 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
     error: null,
   });
   const [isSyncingFirebase, setIsSyncingFirebase] = useState(false);
-  const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
 
   // Image Upload to productsimg State
   const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const [uploadSuccessMsg, setUploadSuccessMsg] = useState<string | null>(null);
   const [availableImages, setAvailableImages] = useState<ProductImageItem[]>([]);
-
-  // Delete Confirmation Dialog State (in-app modal to prevent iframe confirm blockage)
-  const [partToDelete, setPartToDelete] = useState<AutoPart | null>(null);
-  const [saleToDelete, setSaleToDelete] = useState<POSSaleRecord | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   // Subscribe to live Firestore changes and load available images
   useEffect(() => {
@@ -240,16 +232,13 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
   // Explicit sync from Firebase Firestore
   const handleSyncFromFirebase = async () => {
     setIsSyncingFirebase(true);
-    setSyncFeedback(null);
     try {
       const fetched = await fetchDirectlyFromFirebase();
       setParts(fetched);
       onCatalogUpdated();
-      setSyncFeedback(`✅ Direct fetch verified: ${fetched.length} parts loaded from Google Cloud Firestore!`);
-      setTimeout(() => setSyncFeedback(null), 5000);
+      notify.success(`${fetched.length} parts loaded from Google Cloud Firestore.`, { title: 'Sync Complete' });
     } catch (err: any) {
-      setSyncFeedback(`⚠️ Fetch notice: ${err.message || 'Error connecting to Firestore'}`);
-      setTimeout(() => setSyncFeedback(null), 5000);
+      notify.error(err.message || 'Error connecting to Firestore', { title: 'Sync Failed' });
     } finally {
       setIsSyncingFirebase(false);
     }
@@ -257,6 +246,13 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
 
   // Migrate all images to Firebase Storage
   const handleRunImageMigration = async () => {
+    const confirmed = await confirmAction({
+      title: 'Migrate images to Firebase Storage?',
+      message: 'Do you want to move all embedded product photos to Firebase Storage? This may take a few minutes.',
+      variant: 'warning',
+      confirmText: 'Yes, Migrate',
+    });
+    if (!confirmed) return;
     setIsMigrating(true);
     setMigrationProgress(0);
     setMigrationMessage('Starting...');
@@ -268,9 +264,11 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
       await markMigrationComplete();
       setIsMigrationDone(true);
       setMigrationMessage(`✅ Migration complete! ${count} images migrated to Firebase Storage.`);
+      notify.success(`${count} images migrated to Firebase Storage.`, { title: 'Migration Complete' });
       refreshPartsList();
     } catch (err: any) {
       setMigrationMessage(`⚠️ Migration error: ${err.message}`);
+      notify.error(err.message || 'Image migration failed.', { title: 'Migration Failed' });
     } finally {
       setIsMigrating(false);
       setTimeout(() => setMigrationMessage(''), 5000);
@@ -301,13 +299,11 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
       if (data.imageUrl && data.photoTimestamp) {
         if (phoneCameraTarget === 'batch') {
           setBatchImageUrl(data.imageUrl);
-          setBatchFeedback('✓ Photo received from paired phone applied to batch!');
-          setTimeout(() => setBatchFeedback(null), 4000);
+          notify.success('Photo from paired phone applied to the batch.', { title: 'Photo Received', id: 'phone-photo' });
         } else {
           setImageUrl(data.imageUrl);
           setImageAutoDetected(false);
-          setUploadSuccessMsg('✓ Photo received from paired phone & attached to product!');
-          setTimeout(() => setUploadSuccessMsg(null), 5000);
+          notify.success('Photo from paired phone attached to the product.', { title: 'Photo Received', id: 'phone-photo' });
         }
       }
     });
@@ -331,29 +327,26 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
   // Process & compress local image file directly for Firestore Database synchronization
   const processImageFile = async (file: File) => {
     if (!file.type.startsWith('image/')) {
-      alert('Please choose an image file (e.g. JPG, PNG, WebP).');
+      notify.warning('Please choose an image file (e.g. JPG, PNG, WebP).', { title: 'Invalid File' });
       return;
     }
     setIsUploadingImage(true);
-    setUploadSuccessMsg(null);
     try {
       const res = await uploadProductImage(file);
       setImageUrl(res.url);
       setImageAutoDetected(false);
       if (res.isDirectFirestore) {
-        setUploadSuccessMsg(
-          `✓ Photo attached directly to database! (${res.diagnostic?.compressedSizeKb || 45} KB Firestore ready)`
-        );
+        notify.success(`Photo attached directly to database (${res.diagnostic?.compressedSizeKb || 45} KB).`, { title: 'Photo Uploaded' });
       } else if (res.diagnostic) {
-        setUploadSuccessMsg(
-          `✓ Photo uploaded to Cloud Storage! Compressed from ${res.diagnostic.originalSizeKb} KB → ${res.diagnostic.compressedSizeKb} KB`
+        notify.success(
+          `Uploaded to Cloud Storage. Compressed from ${res.diagnostic.originalSizeKb} KB → ${res.diagnostic.compressedSizeKb} KB.`,
+          { title: 'Photo Uploaded' }
         );
       } else {
-        setUploadSuccessMsg(`✓ Photo synced directly to database: ${res.filename}`);
+        notify.success(`Photo synced to database: ${res.filename}`, { title: 'Photo Uploaded' });
       }
-      setTimeout(() => setUploadSuccessMsg(null), 6000);
     } catch (err: any) {
-      alert('Photo processing error: ' + (err?.message || 'Failed to process photo.'));
+      notify.error(err?.message || 'Failed to process photo.', { title: 'Photo Upload Failed' });
     } finally {
       setIsUploadingImage(false);
     }
@@ -430,11 +423,19 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    const confirmed = await confirmAction({
+      title: 'Log out of POS?',
+      message: 'Do you want to log out of the JoyDivine POS workspace?',
+      variant: 'warning',
+      confirmText: 'Yes, Log Out',
+    });
+    if (!confirmed) return;
     logoutPOSUser();
     setCurrentUser(null);
     setPasswordInput('');
     setActiveTab('cashier');
+    notify.info('You have been logged out.', { title: 'Logged Out' });
   };
 
   // Automatic Image Reflection when typing YB No or OEM or Item Name
@@ -524,13 +525,36 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
     setImageAutoDetected(false);
   };
 
+  const confirmSavePart = () =>
+    confirmAction({
+      title: editingPartId ? 'Save changes to this part?' : 'Add this part to inventory?',
+      message: editingPartId
+        ? 'Do you want to update this part in the inventory database?'
+        : 'Do you want to add this new part to the inventory database?',
+      variant: editingPartId ? 'update' : 'add',
+      confirmText: editingPartId ? 'Yes, Update' : 'Yes, Add',
+      details: (
+        <>
+          <div className="font-bold text-slate-900 text-sm">{itemName.trim()}</div>
+          <div className="font-mono text-slate-500 text-[11px]">
+            YB No: <span className="font-bold text-slate-800">{ybNo.trim().toUpperCase()}</span> • OEM: {oem.trim().toUpperCase()}
+          </div>
+          <div className="text-slate-500 text-[11px]">
+            {category} • Stock: {stock === '' ? 0 : stock}
+          </div>
+          <div className="font-mono text-blue-900 font-bold">KES {Number(priceKes).toLocaleString()}</div>
+        </>
+      ),
+    });
+
   // Save/Update Part (Single)
   const handleSavePart = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!itemName.trim() || !ybNo.trim() || !oem.trim() || !des.trim() || priceKes === '') {
-      alert('Please fill all mandatory fields: Item Name, YB No, OEM, Product Description (DES), and Selling Price.');
+      notify.warning('Please fill all mandatory fields: Item Name, YB No, OEM, Product Description (DES), and Selling Price.', { title: 'Missing Details' });
       return;
     }
+    if (!(await confirmSavePart())) return;
 
     const assignedImg = imageUrl || getCategoryDefaultImage(category);
 
@@ -551,12 +575,16 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
         warrantyMonths: 12,
       });
 
+      const wasEditing = !!editingPartId;
       handleResetForm();
       refreshPartsList();
       onCatalogUpdated();
-      alert(editingPartId ? 'Stock updated successfully in Cloud Firestore!' : 'New auto part registered directly into Room B13 database!');
+      notify.success(
+        wasEditing ? `"${itemName.trim()}" was updated in Cloud Firestore.` : `"${itemName.trim()}" was added to the Room B13 inventory.`,
+        { title: wasEditing ? 'Part Updated' : 'Part Added' }
+      );
     } catch (err: any) {
-      alert('Database error while saving part: ' + (err.message || 'Check Firestore connection'));
+      notify.error(err.message || 'Check Firestore connection', { title: 'Could Not Save Part' });
     }
   };
 
@@ -564,9 +592,10 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
   const handleSaveAndAddNextInCategory = async (e: React.MouseEvent) => {
     e.preventDefault();
     if (!itemName.trim() || !ybNo.trim() || !oem.trim() || !des.trim() || priceKes === '') {
-      alert('Please fill all mandatory fields: Item Name, YB No, OEM, Product Description (DES), and Selling Price.');
+      notify.warning('Please fill all mandatory fields: Item Name, YB No, OEM, Product Description (DES), and Selling Price.', { title: 'Missing Details' });
       return;
     }
+    if (!(await confirmSavePart())) return;
 
     const assignedImg = imageUrl || getCategoryDefaultImage(category);
 
@@ -597,10 +626,9 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
       setOem('');
       setDes('');
       setStock(10);
-      setUploadSuccessMsg(`✓ Saved "${saved.itemName}" to Firestore! Ready for next ${category} product (category photo kept).`);
-      setTimeout(() => setUploadSuccessMsg(null), 6000);
+      notify.success(`"${saved.itemName}" saved. Ready for the next ${category} product.`, { title: 'Part Saved' });
     } catch (err: any) {
-      alert('Database error while saving part: ' + (err.message || 'Check Firestore connection'));
+      notify.error(err.message || 'Check Firestore connection', { title: 'Could Not Save Part' });
     }
   };
 
@@ -624,7 +652,17 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
     });
   };
 
-  const handleRemoveBatchRow = (index: number) => {
+  const handleRemoveBatchRow = async (index: number) => {
+    const row = batchRows[index];
+    if (row && (row.itemName.trim() || row.ybNo.trim())) {
+      const confirmed = await confirmAction({
+        title: 'Remove this row?',
+        message: `Do you want to remove "${row.itemName.trim() || row.ybNo.trim()}" from this batch?`,
+        variant: 'delete',
+        confirmText: 'Yes, Remove',
+      });
+      if (!confirmed) return;
+    }
     setBatchRows(prev => {
       if (prev.length <= 1) return [createEmptyBatchRow(1)];
       return prev.filter((_, i) => i !== index);
@@ -646,12 +684,29 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
     e.preventDefault();
     const validRows = batchRows.filter(r => r.itemName.trim() && r.ybNo.trim() && r.priceKes !== '');
     if (validRows.length === 0) {
-      alert('Please fill in at least one product with Item Name, YB No, and Selling Price.');
+      notify.warning('Please fill in at least one product with Item Name, YB No, and Selling Price.', { title: 'Missing Details' });
       return;
     }
 
+    const confirmed = await confirmAction({
+      title: `Add ${validRows.length} product(s) to inventory?`,
+      message: `Do you want to add these products to the "${batchCategory}" category?`,
+      variant: 'add',
+      confirmText: `Yes, Add ${validRows.length}`,
+      details: (
+        <ul className="space-y-0.5 max-h-40 overflow-y-auto">
+          {validRows.map((r) => (
+            <li key={r.rowId} className="flex justify-between gap-2">
+              <span className="truncate font-semibold text-slate-800">{r.itemName.trim()}</span>
+              <span className="font-mono text-blue-900 shrink-0">KES {Number(r.priceKes).toLocaleString()}</span>
+            </li>
+          ))}
+        </ul>
+      ),
+    });
+    if (!confirmed) return;
+
     setIsSavingBatch(true);
-    setBatchFeedback(null);
 
     const categoryImg = batchImageUrl || getCategoryDefaultImage(batchCategory);
 
@@ -674,37 +729,44 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
       const saved = await batchSaveParts(partsToSave);
       refreshPartsList();
       onCatalogUpdated();
-      setBatchFeedback(`✅ Successfully registered all ${saved.length} products to "${batchCategory}" with category photo!`);
+      notify.success(`${saved.length} products added to "${batchCategory}".`, { title: 'Batch Saved' });
       // Reset rows with 2 blank rows
       setBatchRows([
         createEmptyBatchRow(1),
         createEmptyBatchRow(2),
       ]);
-      setTimeout(() => setBatchFeedback(null), 7000);
     } catch (err: any) {
-      alert('Error saving batch products: ' + (err.message || 'Check Firestore connection'));
+      notify.error(err.message || 'Check Firestore connection', { title: 'Could Not Save Batch' });
     } finally {
       setIsSavingBatch(false);
     }
   };
 
-  const handleDeletePart = (part: AutoPart) => {
-    setPartToDelete(part);
-  };
-
-  const confirmDeletePart = async () => {
-    if (!partToDelete) return;
-    setIsDeleting(true);
+  const handleDeletePart = async (part: AutoPart) => {
+    const confirmed = await confirmAction({
+      title: 'Delete part from inventory?',
+      message: 'Do you want to permanently delete this part from inventory and Firebase?',
+      variant: 'delete',
+      confirmText: 'Yes, Delete Part',
+      details: (
+        <>
+          <div className="font-bold text-slate-900 text-sm">{part.itemName}</div>
+          <div className="font-mono text-slate-500 text-[11px]">
+            YB No: <span className="font-bold text-slate-800">{part.ybNo}</span> • OEM: {part.oem}
+          </div>
+          <div className="font-mono text-blue-900 font-bold">KES {part.priceKes.toLocaleString()}</div>
+        </>
+      ),
+    });
+    if (!confirmed) return;
+    const toastId = notify.loading(`Deleting "${part.itemName}"...`, { title: 'Deleting Part' });
     try {
-      await deletePart(partToDelete.id);
+      await deletePart(part.id);
       refreshPartsList();
-      toast.success('Part moved to trash!');
-    } catch (err) {
+      notify.success(`"${part.itemName}" was deleted from inventory.`, { id: toastId, title: 'Part Deleted' });
+    } catch (err: any) {
       console.error('Failed to delete part:', err);
-      toast.error('Failed to delete part');
-    } finally {
-      setIsDeleting(false);
-      setPartToDelete(null);
+      notify.error(err?.message || 'Failed to delete part.', { id: toastId, title: 'Delete Failed' });
     }
   };
 
@@ -734,6 +796,8 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
       ];
     });
 
+    notify.success(`${part.itemName} added to the sales ticket.`, { title: 'Added to Ticket', id: `ticket-add-${part.id}` });
+
     // Make the Current Sales Ticket card appear immediately
     setShowMobileTicketModal(true);
     setTicketFlash(true);
@@ -760,15 +824,36 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
     );
   };
 
-  const handleRemoveFromTicket = (partId: string) => {
-    setTicketItems((prev) => prev.filter((item) => item.part.id !== partId));
+  const handleRemoveFromTicket = async (partId: string) => {
+    const item = ticketItems.find((i) => i.part.id === partId);
+    const confirmed = await confirmAction({
+      title: 'Remove item from ticket?',
+      message: item ? `Do you want to remove "${item.part.itemName}" from the sales ticket?` : 'Do you want to remove this item from the sales ticket?',
+      variant: 'delete',
+      confirmText: 'Yes, Remove',
+    });
+    if (!confirmed) return;
+    setTicketItems((prev) => prev.filter((i) => i.part.id !== partId));
+    notify.info(item ? `${item.part.itemName} removed from the ticket.` : 'Item removed from the ticket.', { title: 'Item Removed' });
   };
 
-  const handleClearTicket = () => {
+  const resetTicket = () => {
     setTicketItems([]);
     setMpesaRef('');
     setCustomerName('');
     setCustomerPhone('');
+  };
+
+  const handleClearTicket = async () => {
+    const confirmed = await confirmAction({
+      title: 'Clear the sales ticket?',
+      message: `Do you want to remove all ${ticketItems.length} item(s) from the current ticket?`,
+      variant: 'delete',
+      confirmText: 'Yes, Clear Ticket',
+    });
+    if (!confirmed) return;
+    resetTicket();
+    notify.info('The sales ticket was cleared.', { title: 'Ticket Cleared' });
   };
 
   const ticketTotalKes = ticketItems.reduce((sum, item) => sum + item.subtotalKes, 0);
@@ -776,39 +861,77 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
   const handleCompleteCheckout = async () => {
     if (ticketItems.length === 0) return;
 
+    const confirmed = await confirmAction({
+      title: 'Complete this sale?',
+      message: `Do you want to record this sale of KES ${ticketTotalKes.toLocaleString()} (${paymentMethod})?`,
+      variant: 'add',
+      confirmText: 'Yes, Complete Sale',
+      details: (
+        <ul className="space-y-0.5 max-h-40 overflow-y-auto">
+          {ticketItems.map((item) => (
+            <li key={item.part.id} className="flex justify-between gap-2">
+              <span className="truncate font-semibold text-slate-800">
+                {item.quantity} × {item.part.itemName}
+              </span>
+              <span className="font-mono text-blue-900 shrink-0">KES {item.subtotalKes.toLocaleString()}</span>
+            </li>
+          ))}
+        </ul>
+      ),
+    });
+    if (!confirmed) return false;
+
     const finalMpesaRef = mpesaRef.trim().toUpperCase();
 
-    const saleRecord = await recordPOSSale({
-      items: ticketItems,
-      totalKes: ticketTotalKes,
-      paymentMethod,
-      mpesaRef: finalMpesaRef || undefined,
-      customerName: customerName.trim() || undefined,
-      customerPhone: customerPhone.trim() || undefined,
-      cashierName: currentUser ? `${currentUser.displayName} (@${currentUser.username})` : 'Counter Cashier (Room B13)',
-    });
-
-    refreshPartsList();
-    setCompletedSale(saleRecord);
-    handleClearTicket();
-  };
-
-  const handleDeleteSale = (sale: POSSaleRecord) => {
-    if (!isAdmin) return;
-    setSaleToDelete(sale);
-  };
-
-  const confirmDeleteSale = async () => {
-    if (!saleToDelete) return;
-    setIsDeleting(true);
     try {
-      await deleteSaleRecord(saleToDelete.id);
+      const saleRecord = await recordPOSSale({
+        items: ticketItems,
+        totalKes: ticketTotalKes,
+        paymentMethod,
+        mpesaRef: finalMpesaRef || undefined,
+        customerName: customerName.trim() || undefined,
+        customerPhone: customerPhone.trim() || undefined,
+        cashierName: currentUser ? `${currentUser.displayName} (@${currentUser.username})` : 'Counter Cashier (Room B13)',
+      });
+
+      refreshPartsList();
+      setCompletedSale(saleRecord);
+      resetTicket();
+      notify.success(`Sale of KES ${saleRecord.totalKes.toLocaleString()} recorded.`, { title: 'Sale Completed' });
+      return true;
+    } catch (err: any) {
+      notify.error(err?.message || 'Could not record the sale.', { title: 'Checkout Failed' });
+      return false;
+    }
+  };
+
+  const handleDeleteSale = async (sale: POSSaleRecord) => {
+    if (!isAdmin) return;
+    const receipt = sale.id.slice(-6).toUpperCase();
+    const confirmed = await confirmAction({
+      title: 'Void & delete transaction?',
+      message: 'Do you want to permanently delete this sales audit record?',
+      variant: 'delete',
+      confirmText: 'Yes, Delete Transaction',
+      details: (
+        <>
+          <div className="font-bold text-slate-900 font-mono text-sm">Receipt: #{receipt}</div>
+          <div className="text-slate-700">
+            Total: <strong className="text-emerald-700 font-mono">KES {sale.totalKes.toLocaleString()}</strong> ({sale.paymentMethod})
+          </div>
+          <div className="text-slate-500 text-[11px]">Date: {new Date(sale.timestamp).toLocaleString()}</div>
+        </>
+      ),
+    });
+    if (!confirmed) return;
+    const toastId = notify.loading(`Deleting receipt #${receipt}...`, { title: 'Deleting Transaction' });
+    try {
+      await deleteSaleRecord(sale.id);
       setSalesRecords(getSalesHistory());
-    } catch (err) {
+      notify.success(`Receipt #${receipt} was deleted.`, { id: toastId, title: 'Transaction Deleted' });
+    } catch (err: any) {
       console.error('Failed to delete sale:', err);
-    } finally {
-      setIsDeleting(false);
-      setSaleToDelete(null);
+      notify.error(err?.message || 'Failed to delete transaction.', { id: toastId, title: 'Delete Failed' });
     }
   };
 
@@ -823,18 +946,23 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
       setPassMessage({ text: 'New password must be at least 4 characters long.', isError: true });
       return;
     }
+    const confirmed = await confirmAction({
+      title: 'Change your password?',
+      message: 'Do you want to save your new POS password?',
+      variant: 'update',
+      confirmText: 'Yes, Change Password',
+    });
+    if (!confirmed) return;
 
     try {
       const res = await updatePOSUser(currentUser.id, { password: newPass.trim() });
       if (res.success) {
         setCurrentUser({ ...currentUser, password: newPass.trim() });
-        setPassMessage({ text: 'Password updated successfully!', isError: false });
+        setPassMessage({ text: '', isError: false });
         setOldPass('');
         setNewPass('');
-        setTimeout(() => {
-          setShowPassModal(false);
-          setPassMessage({ text: '', isError: false });
-        }, 1500);
+        setShowPassModal(false);
+        notify.success('Your password was updated.', { title: 'Password Changed' });
       } else {
         setPassMessage({ text: res.message || 'Could not update password.', isError: true });
       }
@@ -960,8 +1088,6 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
   // Authenticated: Full POS Workspace
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900 pb-16">
-      <Toaster />
-      
       {/* Top POS Management Bar: Modern Deep Slate */}
       <div className="bg-[#0F172A] text-white border-b border-slate-800 px-4 sm:px-6 lg:px-8 py-2.5 shadow-sm">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
@@ -1594,9 +1720,8 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                         </div>
 
                         <button
-                          onClick={() => {
-                            handleCompleteCheckout();
-                            setShowMobileTicketModal(false);
+                          onClick={async () => {
+                            if (await handleCompleteCheckout()) setShowMobileTicketModal(false);
                           }}
                           className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm rounded-lg shadow-sm flex items-center justify-center gap-2 cursor-pointer"
                         >
@@ -1795,7 +1920,7 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                                 const res = await uploadProductImage(file);
                                 setBatchImageUrl(res.url);
                               } catch (err: any) {
-                                alert('Image upload failed: ' + err.message);
+                                notify.error(err.message || 'Image upload failed.', { title: 'Photo Upload Failed' });
                               }
                             }}
                             className="hidden"
@@ -1989,12 +2114,6 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                       </button>
                     </div>
 
-                    {batchFeedback && (
-                      <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl text-xs font-bold text-emerald-900 flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                        <span>{batchFeedback}</span>
-                      </div>
-                    )}
                   </div>
                 </div>
               ) : (
@@ -2391,13 +2510,6 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                         </div>
                       )}
                     </div>
-
-                    {uploadSuccessMsg && (
-                      <div className="p-2.5 bg-emerald-50 border border-emerald-300 rounded text-xs text-emerald-900 font-bold flex items-center gap-1.5">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                        <span>{uploadSuccessMsg}</span>
-                      </div>
-                    )}
 
                     {imageAutoDetected && (
                       <div className="flex items-center gap-1.5 text-xs text-emerald-700 font-semibold">
@@ -3174,13 +3286,11 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
         onPhotoReceived={(receivedUrl) => {
           if (phoneCameraTarget === 'batch') {
             setBatchImageUrl(receivedUrl);
-            setBatchFeedback('✓ Photo received from phone & applied to batch!');
-            setTimeout(() => setBatchFeedback(null), 4000);
+            notify.success('Photo from phone applied to the batch.', { title: 'Photo Received', id: 'phone-photo' });
           } else {
             setImageUrl(receivedUrl);
             setImageAutoDetected(false);
-            setUploadSuccessMsg('✓ Photo received from phone & synced to database!');
-            setTimeout(() => setUploadSuccessMsg(null), 5000);
+            notify.success('Photo from phone synced to the product.', { title: 'Photo Received', id: 'phone-photo' });
           }
           setShowPhoneCameraModal(false);
         }}
@@ -3251,112 +3361,6 @@ export const POSView: React.FC<POSViewProps> = ({ onBackToShop, onCatalogUpdated
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* In-App Confirmation Modal: Delete Part (Bypasses browser iframe confirm blockage) */}
-      {partToDelete && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full border border-slate-200 overflow-hidden">
-            <div className="p-5 border-b border-slate-100 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 shrink-0">
-                <Trash2 className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-bold text-base text-slate-900">Delete Part from Inventory?</h3>
-                <p className="text-xs text-slate-500">Remove this item from the catalog.</p>
-              </div>
-            </div>
-
-            <div className="p-5 bg-slate-50 text-xs text-slate-700 space-y-3">
-              <div className="p-3.5 bg-white rounded-lg border border-slate-200 space-y-1">
-                <div className="font-bold text-slate-900 text-sm">{partToDelete.itemName}</div>
-                <div className="font-mono text-slate-500 text-[11px]">
-                  YB No: <span className="font-bold text-slate-800">{partToDelete.ybNo}</span> • OEM: {partToDelete.oem}
-                </div>
-                <div className="font-mono text-blue-900 font-bold">
-                  KES {partToDelete.priceKes.toLocaleString()}
-                </div>
-              </div>
-              <p className="text-slate-500 text-[11px]">
-                Are you sure you want to permanently delete this part from inventory and Firebase?
-              </p>
-            </div>
-
-            <div className="p-4 bg-white border-t border-slate-100 flex items-center justify-end gap-2.5">
-              <button
-                type="button"
-                disabled={isDeleting}
-                onClick={() => setPartToDelete(null)}
-                className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50 cursor-pointer disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={isDeleting}
-                onClick={confirmDeletePart}
-                className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>{isDeleting ? 'Deleting...' : 'Delete Part'}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* In-App Confirmation Modal: Delete Sale (Bypasses browser iframe confirm blockage) */}
-      {saleToDelete && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full border border-slate-200 overflow-hidden">
-            <div className="p-5 border-b border-slate-100 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 shrink-0">
-                <Trash2 className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-bold text-base text-slate-900">Void & Delete Transaction?</h3>
-                <p className="text-xs text-slate-500">Remove sale from the transaction audit log.</p>
-              </div>
-            </div>
-
-            <div className="p-5 bg-slate-50 text-xs text-slate-700 space-y-3">
-              <div className="p-3.5 bg-white rounded-lg border border-slate-200 space-y-1">
-                <div className="font-bold text-slate-900 font-mono text-sm">
-                  Receipt: #{saleToDelete.id.slice(-6).toUpperCase()}
-                </div>
-                <div className="text-slate-700">
-                  Total: <strong className="text-emerald-700 font-mono">KES {saleToDelete.totalKes.toLocaleString()}</strong> ({saleToDelete.paymentMethod})
-                </div>
-                <div className="text-slate-500 text-[11px]">
-                  Date: {new Date(saleToDelete.timestamp).toLocaleString()}
-                </div>
-              </div>
-              <p className="text-slate-500 text-[11px]">
-                Are you sure you want to permanently delete this sales audit record?
-              </p>
-            </div>
-
-            <div className="p-4 bg-white border-t border-slate-100 flex items-center justify-end gap-2.5">
-              <button
-                type="button"
-                disabled={isDeleting}
-                onClick={() => setSaleToDelete(null)}
-                className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50 cursor-pointer disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={isDeleting}
-                onClick={confirmDeleteSale}
-                className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>{isDeleting ? 'Deleting...' : 'Delete Transaction'}</span>
-              </button>
-            </div>
           </div>
         </div>
       )}
