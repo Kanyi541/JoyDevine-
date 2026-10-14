@@ -10,7 +10,8 @@ import {
   BoxSeam,
   ShieldCheck,
   GeoAlt,
-  Telephone
+  Telephone,
+  CheckCircleFill as CheckCircle2
 } from 'react-bootstrap-icons';
 import { AutoPart } from '../types';
 import { getAbsoluteImageUrl, getCategoryDefaultImage } from '../services/productImageService';
@@ -78,9 +79,9 @@ export const PrintBookletModal: React.FC<PrintBookletModalProps> = ({
   });
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0A192F]/80 backdrop-blur-xs flex flex-col items-center justify-center p-2 sm:p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-[#0A192F]/85 backdrop-blur-xs flex flex-col items-center justify-center p-2 sm:p-4 overflow-y-auto">
       
-      {/* Scoped Print Styles: Professional multi-page layout with cover page */}
+      {/* Scoped Print Styles: Customer Booklet Presentation */}
       <style>{`
         @media print {
           body * {
@@ -107,13 +108,13 @@ export const PrintBookletModal: React.FC<PrintBookletModalProps> = ({
           .booklet-cover-page {
             page-break-after: always !important;
             break-after: page !important;
-            height: 100vh !important;
+            min-height: 100vh !important;
             display: flex !important;
             flex-direction: column !important;
             justify-content: space-between !important;
-            padding: 20mm 15mm !important;
+            padding: 18mm 15mm !important;
             box-sizing: border-box !important;
-            background: linear-gradient(135deg, #0A192F 0%, #132A4D 100%) !important;
+            background: linear-gradient(135deg, #0A192F 0%, #132A4D 50%, #1E3A6B 100%) !important;
             color: white !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
@@ -121,11 +122,14 @@ export const PrintBookletModal: React.FC<PrintBookletModalProps> = ({
           .booklet-catalog-page {
             page-break-before: always !important;
             break-before: page !important;
-            padding: 10mm 10mm !important;
+            padding: 12mm 10mm !important;
           }
           .booklet-card {
             break-inside: avoid !important;
             page-break-inside: avoid !important;
+            border: 1px solid #cbd5e1 !important;
+            background: #ffffff !important;
+            box-shadow: none !important;
           }
           @page {
             size: A4 portrait;
@@ -146,13 +150,13 @@ export const PrintBookletModal: React.FC<PrintBookletModalProps> = ({
             </div>
             <div>
               <h2 className="text-base font-bold font-['Chivo'] tracking-tight flex items-center gap-2">
-                <span>JoyDivine Master Parts Booklet</span>
+                <span>Customer Product Catalogue Booklet</span>
                 <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-blue-900/60 text-blue-200 border border-blue-400/20">
-                  {parts.length} total items in database
+                  {parts.length} total parts ready for customers
                 </span>
               </h2>
               <p className="text-xs text-slate-300">
-                Includes professional cover page, category breakdown, photos, OEM numbers, and vehicle compatibility.
+                Professional customer-handout layout: Cover page followed by all database parts, OEM numbers, photos, and descriptions.
               </p>
             </div>
           </div>
@@ -164,7 +168,7 @@ export const PrintBookletModal: React.FC<PrintBookletModalProps> = ({
               className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer"
             >
               <Printer className="w-4 h-4" />
-              <span>Print Complete Booklet (PDF)</span>
+              <span>Print Customer Booklet (PDF)</span>
             </button>
             <button
               onClick={onClose}
@@ -261,7 +265,7 @@ export const PrintBookletModal: React.FC<PrintBookletModalProps> = ({
                   onChange={(e) => setShowPrices(e.target.checked)}
                   className="rounded text-blue-700"
                 />
-                <span>Include Prices</span>
+                <span>Show Prices</span>
               </label>
 
               <label className="flex items-center gap-1.5 cursor-pointer text-slate-700 font-medium select-none">
@@ -271,7 +275,7 @@ export const PrintBookletModal: React.FC<PrintBookletModalProps> = ({
                   onChange={(e) => setShowStock(e.target.checked)}
                   className="rounded text-blue-700"
                 />
-                <span>Include Stock Qty</span>
+                <span>Show Stock Qty</span>
               </label>
             </div>
 
@@ -280,7 +284,7 @@ export const PrintBookletModal: React.FC<PrintBookletModalProps> = ({
         </div>
 
         {/* Scrollable Printable Booklet Preview Container */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-8 pb-32 bg-slate-100 flex justify-center">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-8 pb-36 bg-slate-100 flex justify-center">
           
           {/* Printable Booklet Wrapper */}
           <div 
@@ -289,14 +293,14 @@ export const PrintBookletModal: React.FC<PrintBookletModalProps> = ({
           >
             
             {/* ========================================= */}
-            {/* PAGE 1: PROFESSIONAL COVER PAGE           */}
+            {/* PAGE 1: LUXURY CUSTOMER COVER PAGE        */}
             {/* ========================================= */}
-            <div className="booklet-cover-page bg-gradient-to-br from-[#0A192F] via-[#132A4D] to-[#1E3A6B] text-white p-8 sm:p-12 flex flex-col justify-between min-h-[980px] rounded-t-xl">
+            <div className="booklet-cover-page bg-gradient-to-br from-[#0A192F] via-[#132A4D] to-[#1E3A6B] text-white p-8 sm:p-12 flex flex-col justify-between min-h-[980px]">
               
-              {/* Cover Top Header */}
+              {/* Cover Header */}
               <div className="flex items-center justify-between border-b border-blue-500/30 pb-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-16 h-16 rounded-full bg-white p-1 border-2 border-amber-400 shadow-lg flex items-center justify-center">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-16 h-16 rounded-full bg-white p-1 border-2 border-amber-400 shadow-xl flex items-center justify-center">
                     <img 
                       src="/joydevine-logo.png" 
                       alt="JoyDivine Logo" 
@@ -305,68 +309,69 @@ export const PrintBookletModal: React.FC<PrintBookletModalProps> = ({
                   </div>
                   <div>
                     <span className="text-[10px] font-mono tracking-widest text-amber-400 uppercase font-bold">
-                      OFFICIAL PRODUCT CATALOGUE
+                      OFFICIAL CUSTOMER CATALOGUE
                     </span>
-                    <h2 className="text-lg font-black tracking-tight font-['Chivo'] uppercase text-white">
+                    <h2 className="text-xl font-black tracking-tight font-['Chivo'] uppercase text-white">
                       JoyDivine Auto Spares
                     </h2>
                   </div>
                 </div>
 
                 <div className="text-right">
-                  <span className="px-3 py-1 bg-amber-500 text-slate-900 font-mono font-black text-xs rounded-full uppercase shadow">
+                  <span className="px-3.5 py-1.5 bg-amber-500 text-slate-900 font-mono font-black text-xs rounded-full uppercase shadow">
                     EDITION {currentDate}
                   </span>
                 </div>
               </div>
 
-              {/* Cover Center Main Title & Branding */}
-              <div className="my-auto py-12 text-center space-y-6">
+              {/* Cover Main Hero */}
+              <div className="my-auto py-10 text-center space-y-6">
                 <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/20 border border-blue-400/40 text-blue-300 text-xs font-mono">
                   <ShieldCheck className="w-4 h-4 text-amber-400" />
-                  <span>Nairobi's Premier Hydraulic & Brake Specialists</span>
+                  <span>Genuine Brake, Clutch & Hydraulic Specialists for Garages & Motorists</span>
                 </div>
 
-                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black font-['Chivo'] tracking-tight uppercase leading-none text-white drop-shadow-md">
-                  Master Parts <br />
+                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black font-['Chivo'] tracking-tight uppercase leading-none text-white drop-shadow-lg">
+                  Customer Parts <br />
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500">
-                    Booklet & Reference
+                    Product Catalogue
                   </span>
                 </h1>
 
-                <p className="text-sm sm:text-base text-slate-300 max-w-xl mx-auto leading-relaxed font-light">
-                  Comprehensive stock inventory covering <strong className="text-white">Master Cylinders, Wheel Cylinders, Brake & Clutch Cables, Linkages, Hoses</strong> and precision hydraulic components for Japanese, European, and African commercial and private vehicles.
+                <p className="text-sm sm:text-base text-slate-200 max-w-xl mx-auto leading-relaxed font-light">
+                  Hand-crafted product booklet prepared for our valued customers and partner garages. Featuring complete stock for <strong className="text-amber-300">Master Cylinders, Wheel Cylinders, Brake & Clutch Cables, Linkages, and Hoses</strong>.
                 </p>
 
-                {/* Cover Stats Box */}
+                {/* Cover Statistics */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-2xl mx-auto pt-4">
-                  <div className="bg-white/10 backdrop-blur-xs border border-white/10 rounded-xl p-3 text-center">
+                  <div className="bg-white/15 backdrop-blur-xs border border-white/10 rounded-xl p-3 text-center">
                     <div className="text-2xl font-black text-amber-400 font-mono">{parts.length}</div>
-                    <div className="text-[11px] text-slate-300 uppercase tracking-wider font-medium">Total Parts</div>
+                    <div className="text-[11px] text-slate-200 uppercase tracking-wider font-semibold">Active Parts</div>
                   </div>
-                  <div className="bg-white/10 backdrop-blur-xs border border-white/10 rounded-xl p-3 text-center">
+                  <div className="bg-white/15 backdrop-blur-xs border border-white/10 rounded-xl p-3 text-center">
                     <div className="text-2xl font-black text-blue-300 font-mono">{Object.keys(categoryCounts).length}</div>
-                    <div className="text-[11px] text-slate-300 uppercase tracking-wider font-medium">Categories</div>
+                    <div className="text-[11px] text-slate-200 uppercase tracking-wider font-semibold">Categories</div>
                   </div>
-                  <div className="bg-white/10 backdrop-blur-xs border border-white/10 rounded-xl p-3 text-center">
-                    <div className="text-2xl font-black text-emerald-400 font-mono">100%</div>
-                    <div className="text-[11px] text-slate-300 uppercase tracking-wider font-medium">Genuine OEM</div>
+                  <div className="bg-white/15 backdrop-blur-xs border border-white/10 rounded-xl p-3 text-center">
+                    <div className="text-2xl font-black text-emerald-400 font-mono">OEM</div>
+                    <div className="text-[11px] text-slate-200 uppercase tracking-wider font-semibold">Quality Standard</div>
                   </div>
-                  <div className="bg-white/10 backdrop-blur-xs border border-white/10 rounded-xl p-3 text-center">
-                    <div className="text-2xl font-black text-purple-300 font-mono">24/7</div>
-                    <div className="text-[11px] text-slate-300 uppercase tracking-wider font-medium">Customer Support</div>
+                  <div className="bg-white/15 backdrop-blur-xs border border-white/10 rounded-xl p-3 text-center">
+                    <div className="text-2xl font-black text-purple-300 font-mono">Nairobi</div>
+                    <div className="text-[11px] text-slate-200 uppercase tracking-wider font-semibold">Kirinyaga Cres</div>
                   </div>
                 </div>
 
-                {/* Category Summary List */}
-                <div className="bg-black/30 border border-white/10 rounded-2xl p-4 max-w-xl mx-auto text-left space-y-2">
-                  <div className="text-xs font-bold text-amber-400 uppercase tracking-wider font-mono">
-                    Catalog Table of Contents:
+                {/* Category Breakdown Table of Contents */}
+                <div className="bg-black/35 border border-white/15 rounded-2xl p-5 max-w-xl mx-auto text-left space-y-2.5 shadow-xl">
+                  <div className="text-xs font-bold text-amber-400 uppercase tracking-wider font-mono flex items-center justify-between">
+                    <span>Catalog Product Categories:</span>
+                    <span className="text-[10px] text-slate-300">All Included Below</span>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
                     {Object.entries(categoryCounts).map(([cat, count]) => (
-                      <div key={cat} className="flex items-center justify-between bg-white/5 px-2.5 py-1 rounded border border-white/5">
-                        <span className="truncate text-slate-200">{cat}</span>
+                      <div key={cat} className="flex items-center justify-between bg-white/10 px-2.5 py-1.5 rounded-lg border border-white/5">
+                        <span className="truncate text-slate-100 font-medium">{cat}</span>
                         <span className="font-mono font-bold text-amber-300 ml-1">({count})</span>
                       </div>
                     ))}
@@ -375,8 +380,8 @@ export const PrintBookletModal: React.FC<PrintBookletModalProps> = ({
 
               </div>
 
-              {/* Cover Bottom Footer: Location & Contact */}
-              <div className="border-t border-blue-500/30 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-300">
+              {/* Cover Footer */}
+              <div className="border-t border-blue-500/30 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-200">
                 <div className="flex items-center gap-2">
                   <GeoAlt className="w-4 h-4 text-amber-400 shrink-0" />
                   <span>Room B13, Kirinyaga Crescent, Opp. Seventies Plaza, Nairobi</span>
@@ -395,34 +400,34 @@ export const PrintBookletModal: React.FC<PrintBookletModalProps> = ({
 
 
             {/* ========================================= */}
-            {/* PAGE 2+: CATALOG PAGES (All Parts & Categories) */}
+            {/* PAGES 2+: CUSTOMER PRODUCT CATALOGUE      */}
             {/* ========================================= */}
             <div className="booklet-catalog-page p-6 sm:p-10 space-y-6">
               
-              {/* Header for Catalog Pages */}
+              {/* Running Header for Catalog Pages */}
               <div className="border-b-2 border-[#0A192F] pb-4 flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <img 
                     src="/joydevine-logo.png" 
                     alt="JoyDivine Logo" 
-                    className="w-12 h-12 object-contain rounded-full border border-slate-200 p-0.5 bg-white"
+                    className="w-12 h-12 object-contain rounded-full border border-slate-200 p-0.5 bg-white shadow-xs"
                   />
                   <div>
-                    <h3 className="text-lg font-black font-['Chivo'] tracking-tight text-[#0A192F] uppercase">
-                      JoyDivine Auto Spares • Inventory Catalog
+                    <h3 className="text-base font-black font-['Chivo'] tracking-tight text-[#0A192F] uppercase">
+                      JoyDivine Auto Spares • Customer Catalogue
                     </h3>
                     <p className="text-xs text-slate-600">
-                      Room B13, Kirinyaga Crescent, Nairobi • Hotline: {PRIMARY_PHONE_DISPLAY}
+                      Room B13, Kirinyaga Crescent, Nairobi • Hotline: {PRIMARY_PHONE_DISPLAY} / {SECONDARY_PHONE_1_DISPLAY}
                     </p>
                   </div>
                 </div>
 
                 <div className="text-right shrink-0">
-                  <span className="inline-block px-2.5 py-1 bg-[#0A192F] text-white font-mono font-bold text-xs rounded tracking-wider uppercase">
-                    REFERENCE LIST
+                  <span className="inline-block px-2.5 py-1 bg-[#0A192F] text-white font-mono font-bold text-xs rounded tracking-wider uppercase shadow-2xs">
+                    CUSTOMER EDITION
                   </span>
                   <p className="text-[11px] font-mono text-slate-500 mt-1">
-                    Showing: {selectedCategory} ({filteredParts.length} items)
+                    Displaying: {selectedCategory} ({filteredParts.length} parts)
                   </p>
                 </div>
               </div>
@@ -491,7 +496,7 @@ export const PrintBookletModal: React.FC<PrintBookletModalProps> = ({
 
                           {/* Price & Stock */}
                           {(showPrices || showStock) && (
-                            <div className="text-right shrink-0 pl-2 border-l border-slate-100">
+                            <div className="text-right shrink-0 pl-3 border-l border-slate-100">
                               {showPrices && (
                                 <div className="font-black text-sm text-emerald-800 font-mono">
                                   KES {part.priceKes?.toLocaleString()}
@@ -512,7 +517,7 @@ export const PrintBookletModal: React.FC<PrintBookletModalProps> = ({
                     return (
                       <div 
                         key={part.id} 
-                        className="booklet-card border border-slate-200 rounded-xl p-3.5 flex flex-col justify-between bg-white shadow-2xs hover:shadow-sm transition-shadow"
+                        className="booklet-card border border-slate-200 rounded-xl p-4 flex flex-col justify-between bg-white shadow-2xs hover:shadow-sm transition-shadow"
                       >
                         <div>
                           {/* Top Product Photo */}
@@ -525,7 +530,7 @@ export const PrintBookletModal: React.FC<PrintBookletModalProps> = ({
                                 (e.currentTarget as HTMLImageElement).src = '/productsimg/placeholder.svg';
                               }}
                             />
-                            <span className="absolute top-2 left-2 text-[9px] font-mono font-bold bg-slate-900/80 text-white px-1.5 py-0.5 rounded">
+                            <span className="absolute top-2 left-2 text-[9px] font-mono font-bold bg-[#0A192F] text-white px-2 py-0.5 rounded shadow-2xs">
                               {part.category}
                             </span>
                           </div>
@@ -553,8 +558,8 @@ export const PrintBookletModal: React.FC<PrintBookletModalProps> = ({
 
                         {/* Card Footer: Price & Stock */}
                         <div className="mt-4 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
-                          <span className="text-[10px] text-slate-400 font-mono uppercase tracking-wider">
-                            JoyDivine Part
+                          <span className="text-[10px] text-slate-400 font-mono uppercase tracking-wider font-semibold">
+                            JoyDivine Genuine
                           </span>
 
                           <div className="text-right">
@@ -593,7 +598,7 @@ export const PrintBookletModal: React.FC<PrintBookletModalProps> = ({
         <div className="booklet-no-print bg-white border-t border-slate-200 p-3 px-6 flex items-center justify-between shrink-0 text-xs text-slate-600">
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-            <span>Cover page included automatically • Formatted for standard A4 printing / PDF export</span>
+            <span>Customer Booklet Mode • Professional Cover + Complete Product Database</span>
           </div>
 
           <div className="flex items-center gap-2">
