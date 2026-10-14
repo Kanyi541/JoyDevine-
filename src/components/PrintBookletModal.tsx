@@ -99,10 +99,9 @@ export const PrintBookletModal: React.FC<PrintBookletModalProps> = ({
             visibility: visible !important;
           }
           #print-booklet-content {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
+            position: static !important;
             width: 100% !important;
+            overflow: visible !important;
           }
           .booklet-no-print {
             display: none !important;
