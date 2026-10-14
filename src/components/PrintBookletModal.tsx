@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   XLg as X, 
   PrinterFill as Printer, 
@@ -16,6 +16,7 @@ import {
 import { AutoPart } from '../types';
 import { getAbsoluteImageUrl, getCategoryDefaultImage } from '../services/productImageService';
 import { PRIMARY_PHONE_DISPLAY, SECONDARY_PHONE_1_DISPLAY, SECONDARY_PHONE_2_DISPLAY } from '../services/whatsappService';
+import { fetchDirectlyFromFirebase } from '../services/inventoryStorage';
 
 interface PrintBookletModalProps {
   isOpen: boolean;
@@ -28,35 +29,42 @@ export const PrintBookletModal: React.FC<PrintBookletModalProps> = ({
   onClose,
   parts
 }) => {
+  const [allParts, setAllParts] = useState<AutoPart[]>(parts);
   const [selectedCategory, setSelectedCategory] = useState<string>('All Categories');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [layoutMode, setLayoutMode] = useState<'3-col' | '2-col' | 'list'>('3-col');
   const [showPrices, setShowPrices] = useState<boolean>(true);
   const [showStock, setShowStock] = useState<boolean>(false);
 
+  useEffect(() => {
+    if (isOpen) {
+      fetchDirectlyFromFirebase().then(setAllParts);
+    }
+  }, [isOpen]);
+
   // Available unique categories from parts
   const categories = useMemo(() => {
     const set = new Set<string>();
-    parts.forEach((p) => {
+    allParts.forEach((p) => {
       if (p.category) set.add(p.category);
     });
     return ['All Categories', ...Array.from(set).sort()];
-  }, [parts]);
+  }, [allParts]);
 
   // Category item counts for cover page summary
   const categoryCounts = useMemo(() => {
     const map: Record<string, number> = {};
-    parts.forEach((p) => {
+    allParts.forEach((p) => {
       const cat = p.category || 'Uncategorized';
       map[cat] = (map[cat] || 0) + 1;
     });
     return map;
-  }, [parts]);
+  }, [allParts]);
 
   // Filtered parts based on category and search query
   const filteredParts = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
-    return parts.filter((part) => {
+    return allParts.filter((part) => {
       const matchCat = selectedCategory === 'All Categories' || part.category === selectedCategory;
       if (!matchCat) return false;
       if (!q) return true;
@@ -64,7 +72,7 @@ export const PrintBookletModal: React.FC<PrintBookletModalProps> = ({
       const searchable = `${part.itemName} ${part.ybNo} ${part.oem} ${part.des} ${part.category} ${part.brand || ''}`.toLowerCase();
       return searchable.includes(q);
     });
-  }, [parts, selectedCategory, searchQuery]);
+  }, [allParts, selectedCategory, searchQuery]);
 
   if (!isOpen) return null;
 
@@ -84,21 +92,12 @@ export const PrintBookletModal: React.FC<PrintBookletModalProps> = ({
       {/* Scoped Print Styles: Customer Booklet Presentation */}
       <style>{`
         @media print {
-          body * {
-            visibility: hidden !important;
+          body > :not(#print-booklet-container) {
+            display: none !important;
           }
-          #print-booklet-content, #print-booklet-content * {
-            visibility: visible !important;
-          }
-          #print-booklet-content {
+          #print-booklet-container {
+            display: block !important;
             position: static !important;
-            width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            background: white !important;
-            color: black !important;
-            box-shadow: none !important;
-            border: none !important;
           }
           .booklet-no-print {
             display: none !important;
@@ -106,13 +105,12 @@ export const PrintBookletModal: React.FC<PrintBookletModalProps> = ({
           .booklet-cover-page {
             page-break-after: always !important;
             break-after: page !important;
-            height: 270mm !important;
+            min-height: 250mm !important;
             display: flex !important;
             flex-direction: column !important;
             justify-content: space-between !important;
-            padding: 18mm 15mm !important;
-            box-sizing: border-box !important;
-            background: linear-gradient(135deg, #0A192F 0%, #132A4D 50%, #1E3A6B 100%) !important;
+            padding: 20mm 15mm !important;
+            background: #0A192F !important;
             color: white !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
@@ -137,7 +135,7 @@ export const PrintBookletModal: React.FC<PrintBookletModalProps> = ({
       `}</style>
 
       {/* Main Modal Card */}
-      <div className="w-full max-w-5xl bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col max-h-[95vh] overflow-hidden">
+      <div id="print-booklet-container" className="w-full max-w-5xl bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col max-h-[95vh] overflow-hidden">
         
         {/* Top Control Bar (Screen only, hidden on print) */}
         <div className="booklet-no-print bg-[#0A192F] text-white p-4 border-b border-slate-700 flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0">
