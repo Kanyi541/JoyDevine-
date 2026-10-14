@@ -254,12 +254,12 @@ export const PrintBookletModal: React.FC<PrintBookletModalProps> = ({
         </div>
 
         {/* Scrollable Printable Booklet Preview Container */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-100 flex justify-center">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 pb-24 sm:pb-32 bg-slate-100 flex justify-center">
           
           {/* Printable Booklet Page Content */}
           <div 
             id="print-booklet-content"
-            className="w-full max-w-[850px] bg-white rounded-xl shadow-md border border-slate-200 p-6 sm:p-8 space-y-6"
+            className="w-full max-w-[850px] bg-white rounded-xl shadow-md border border-slate-200 p-6 sm:p-8 space-y-6 mb-12"
           >
             
             {/* Header: JoyDivine Branding Banner */}

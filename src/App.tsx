@@ -50,7 +50,19 @@ export const App: React.FC = () => {
   const checkSnapSessionId = () => {
     if (typeof window === 'undefined') return null;
     const params = new URLSearchParams(window.location.search);
-    return params.get('snap') || params.get('session');
+    let id = params.get('snap') || params.get('session');
+    if (!id) {
+      const hash = window.location.hash;
+      const qIndex = hash.indexOf('?');
+      if (qIndex !== -1) {
+        const hashParams = new URLSearchParams(hash.substring(qIndex));
+        id = hashParams.get('snap') || hashParams.get('session');
+      } else if (hash.includes('snap=')) {
+        const match = hash.match(/snap=([a-zA-Z0-9_]+)/);
+        if (match) id = match[1];
+      }
+    }
+    return id;
   };
 
   const [snapSessionId, setSnapSessionId] = useState<string | null>(checkSnapSessionId());
